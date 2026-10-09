@@ -22,10 +22,10 @@ jobs:
           sudo xcode-select -s /Applications/Xcode.app || true
           xcodebuild -version
 
-      - name: Restore Gradle wrapper jar
+      - name: Generate Gradle wrapper
         run: |
-          curl -fsSL -o gradle/wrapper/gradle-wrapper.jar \
-            "https://raw.githubusercontent.com/gradle/gradle/v8.10.2/gradle/wrapper/gradle-wrapper.jar"
+          brew install gradle
+          gradle wrapper --gradle-version 8.10.2
           chmod +x gradlew
 
       - name: Build iOS app (simulator, no code signing)
