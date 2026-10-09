@@ -85,7 +85,7 @@ actual class SecureStore actual constructor() {
 }
 actual fun clearLoginWebData() {
     dispatch_async(dispatch_get_main_queue()) {
-        WKWebsiteDataStore.defaultDataStore().removeDataOfTypes(WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince = NSDate(timeIntervalSince1970 = 0.0), completionHandler = {})
+        WKWebsiteDataStore.defaultDataStore().removeDataOfTypes(WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince = NSDate(timeIntervalSinceReferenceDate = -978_307_200.0), completionHandler = {})
     }
 }
 /** Prevents auto-lock only. OS background transfers use NSURLSession, not this idle timer. */

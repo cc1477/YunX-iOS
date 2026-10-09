@@ -37,4 +37,25 @@ jobs:
           xcodebuild -project iosApp.xcodeproj -scheme YunX
           -configuration Debug -sdk iphonesimulator
           -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath build
           CODE_SIGNING_ALLOWED=NO build
+
+      - name: Launch app in an iPhone simulator
+        run: >
+          python3 iosApp/scripts/smoke-simulator.py
+          iosApp/build/Build/Products/Debug-iphonesimulator/YunX.app
+          iosApp/build/YunX-startup.png
+
+      - name: Package simulator app
+        working-directory: iosApp
+        run: ditto -c -k --sequesterRsrc --keepParent build/Build/Products/Debug-iphonesimulator/YunX.app build/YunX-simulator.zip
+
+      - name: Upload simulator app and startup screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: YunX-simulator
+          path: |
+            iosApp/build/YunX-simulator.zip
+            iosApp/build/YunX-startup.png
+          if-no-files-found: error
+          retention-days: 7
