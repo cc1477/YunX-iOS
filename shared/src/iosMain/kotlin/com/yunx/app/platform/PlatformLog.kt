@@ -23,7 +23,8 @@ package com.yunx.app.platform
 import platform.Foundation.NSLog
 actual object PlatformLog {
     private fun emit(level: String, tag: String, msg: String, thr: Throwable?) {
-        NSLog("%@", "$level/$tag: $msg${thr?.let { "\n${it.stackTraceToString()}" }.orEmpty()}")
+        // Kotlin/Native passes String C varargs as UTF-8 char*, not Objective-C objects.
+        NSLog("%s", "$level/$tag: $msg${thr?.let { "\n${it.stackTraceToString()}" }.orEmpty()}")
     }
     actual fun d(tag: String, msg: String, thr: Throwable?) = emit("D", tag, msg, thr)
     actual fun i(tag: String, msg: String, thr: Throwable?) = emit("I", tag, msg, thr)
