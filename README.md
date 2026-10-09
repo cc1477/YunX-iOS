@@ -13,11 +13,15 @@ Stage 5 完成构建文档。2026-10-09 已通过 JVM 编译与 3 项共用回�
 
 ## 未签名真机 IPA
 
-[下载 YunX-unsigned-ipa](https://github.com/cc1477/YunX-iOS/actions/runs/37919720624/artifacts/11611439256)（保留至 2026-10-23）。下载外层 ZIP 后解压，取出 `YunX-unsigned.ipa`；同包附有 SHA-256 和构建信息。
+[打开 LCSign 测试分发页](https://cc1477.github.io/YunX-iOS/)，可直接导入 LCSign 或手动下载未签名 IPA，无需登录 GitHub。页面显示包内版本、构建号、构建提交及 SHA256，导入后选择自己的证书签名安装。
+
+当前 UI 适配测试包为 **0.1.0（2）**。本地 8 项共享回归测试通过，包含安全区、大字号与窄屏布局检查，生成 61 张 Compose JVM 渲染截图；验证范围见 [UI-ADAPTATION.md](UI-ADAPTATION.md)。
+
+[设备包编译与分发部署](https://github.com/cc1477/YunX-iOS/actions/runs/37939714730)和[共享测试、模拟器构建及启动检查](https://github.com/cc1477/YunX-iOS/actions/runs/37939578245)均已通过。线上 IPA 已重新下载核对版本、构建号、包名及 SHA256；[本次模拟器启动截图产物](https://github.com/cc1477/YunX-iOS/actions/runs/37939578245/artifacts/11621454334)保留 7 天。真机签名、运行、登录与下载仍需设备验证。
 
 这是 Debug 配置的 iPhone arm64 IPA，最低 iOS 15.0，bundle ID 为 `com.yunx.app.ios`。已核验 `Payload/YunX.app`、主程序与动态库的真机平台标记；不含代码签名或描述文件，需要自行签名后安装。真机运行、登录与下载尚未验证。首次 Release 构建因 Kotlin/Native 优化阶段的 Java heap space 失败，改用 Debug 后[构建和打包通过](https://github.com/cc1477/YunX-iOS/actions/runs/37919720624)。
 
-需要更新包时，可在 Actions 的 **Unsigned iOS IPA** 工作流中选择 **Run workflow**。此工作流生成真机包，与 **iOS build** 的模拟器包用途不同。
+需要更新包时，可在 Actions 的 **Unsigned iOS IPA** 工作流中选择 **Run workflow**。此工作流生成真机包并验证后自动部署 LCSign 测试页，与 **iOS build** 的模拟器包用途不同。GitHub Pages 发布源需保持为 GitHub Actions。
 
 ## 目录结构
 
