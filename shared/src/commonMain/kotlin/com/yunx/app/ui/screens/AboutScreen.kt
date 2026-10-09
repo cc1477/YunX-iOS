@@ -87,7 +87,6 @@ import com.yunx.app.util.AppLinks
 @Composable
 fun AboutScreen(
     onBack: () -> Unit,
-    onPreviewOnboarding: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     // 系统返回键 → 返回主页（而不是退出应用）
@@ -151,9 +150,6 @@ fun AboutScreen(
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
-
-            // ---------- 重新预览欢迎界面 ----------
-            PreviewOnboardingCard(onClick = onPreviewOnboarding)
 
             // ---------- 开源仓库 ----------
             GitHubCard()
@@ -414,59 +410,6 @@ private fun DisclaimerCard() {
                     lineHeight = 22.sp
                 )
             }
-        }
-    }
-}
-
-/** 重新预览欢迎界面入口 */
-@Composable
-private fun PreviewOnboardingCard(onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                modifier = Modifier.size(40.dp),
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Outlined.Info,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "重新预览欢迎界面",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = "重新展示首次启动引导页",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Icon(
-                imageVector = Icons.Outlined.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.outline
-            )
         }
     }
 }

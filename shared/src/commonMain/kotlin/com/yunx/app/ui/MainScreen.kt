@@ -140,7 +140,6 @@ import com.yunx.app.ui.screens.BookmarkScreen
 import com.yunx.app.ui.screens.DownloadScreen
 import com.yunx.app.ui.screens.DriveScreen
 import com.yunx.app.ui.screens.DownloadEngineScreen
-import com.yunx.app.ui.screens.OnboardingScreen
 import com.yunx.app.ui.screens.ResolveScreen
 import com.yunx.app.ui.screens.SettingsScreen
 import com.yunx.app.ui.screens.SupportScreen
@@ -257,13 +256,6 @@ fun MainScreen(
     val useRail = width >= 840.dp || (width >= 600.dp && width > height)
     val compactHeight = height < 480.dp
     val keyboardVisible = WindowInsets.ime.getBottom(density) > 0
-    // 首次启动引导页（context 声明后检测）
-    var showOnboarding by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        val prefs = com.yunx.app.ui.platform.UiPreferences()
-        showOnboarding = !prefs.getBoolean("onboarding_shown", false)
-    }
-
     // 更新检测：请求 GitHub 最新 Release（仓库无 Release / 网络失败则不提示，失败原因看 YunX-Update 日志）
     var showUpdateSheet by remember { mutableStateOf(false) }
     // 最近一次成功拿到的真实 Release：既用于「发现新版本」弹窗，也供设置页的开发调试入口直接预览
@@ -709,23 +701,6 @@ fun MainScreen(
             currentTab = MainTab.Resolve
             resolveViewModel.consumeUpdateFallbackToResolve()
         }
-    }
-
-    // ★ 电池优化引导不再在这里弹：统一收到引导页第 3 页（OnboardingPermissionPage 的「后台运行」卡片），
-    //   之后只有设置页「锁屏后保持下载」那一项里的手动入口能再次跳系统设置。
-
-    // 首次启动引导页：全屏覆盖（优先级最高）
-    if (showOnboarding) {
-        OnboardingScreen(
-            onFinish = {
-                com.yunx.app.ui.platform.UiPreferences()
-                    .edit()
-                    .putBoolean("onboarding_shown", true)
-                    .apply()
-                showOnboarding = false
-            }
-        )
-        return
     }
 
     // 夸克登录页：全屏覆盖
@@ -1199,17 +1174,7 @@ fun MainScreen(
                         )
                     ) {
                         when (route) {
-                            OVERLAY_KEY_ABOUT -> AboutScreen(
-                                onBack = { showAbout = false },
-                                onPreviewOnboarding = {
-                                    com.yunx.app.ui.platform.UiPreferences()
-                                        .edit()
-                                        .putBoolean("onboarding_shown", false)
-                                        .apply()
-                                    showAbout = false
-                                    showOnboarding = true
-                                }
-                            )
+                            OVERLAY_KEY_ABOUT -> AboutScreen(onBack = { showAbout = false })
                             OVERLAY_KEY_SUPPORT -> SupportScreen(onBack = { showSupport = false })
                             OVERLAY_KEY_THEME -> ThemeScreen(onBack = { showTheme = false })
                             OVERLAY_KEY_GOPEED -> DownloadEngineScreen(onBack = { showGopeed = false })

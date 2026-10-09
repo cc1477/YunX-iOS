@@ -39,6 +39,8 @@ def main():
     try:
         simctl("boot", udid)
         simctl("bootstatus", udid, "-b", timeout=240)
+        simctl("ui", udid, "appearance", "light")
+        simctl("ui", udid, "content_size", "large")
         simctl("install", udid, str(app))
         diagnostics = screenshot.parent / "startup-diagnostics"
         diagnostics.mkdir(parents=True, exist_ok=True)
@@ -56,6 +58,17 @@ def main():
         if process.returncode != 0 or pathlib.Path(process.stdout.strip()).name != app.stem:
             raise RuntimeError("YunX exited during the startup smoke test.")
         print(f"YunX remained running after 15 seconds; screenshot: {screenshot}")
+        # Capture system text-size changes in the active native host, then a cold launch.
+        simctl("ui", udid, "content_size", "accessibility-extra-extra-extra-large")
+        time.sleep(3)
+        simctl("io", udid, "screenshot", str(screenshot.with_name(screenshot.stem + "-large-live.png")))
+        simctl("terminate", udid, "com.yunx.app.ios")
+        simctl("launch", udid, "com.yunx.app.ios")
+        time.sleep(5)
+        simctl("io", udid, "screenshot", str(screenshot.with_name(screenshot.stem + "-large.png")))
+        simctl("ui", udid, "appearance", "dark")
+        time.sleep(3)
+        simctl("io", udid, "screenshot", str(screenshot.with_name(screenshot.stem + "-large-dark.png")))
     except Exception:
         diagnostics = screenshot.parent / "startup-diagnostics"
         diagnostics.mkdir(parents=True, exist_ok=True)

@@ -2,7 +2,7 @@ name: iOS build
 
 on:
   push:
-    branches: [main]
+    branches: [main, codex/ui-adaptation]
   workflow_dispatch:
 
 jobs:
@@ -39,6 +39,18 @@ jobs:
 
       - name: Test shared code
         run: ./gradlew :shared:jvmTest --console=plain
+
+      - name: Upload current shared test reports and Compose renders
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: YunX-ui-validation
+          path: |
+            shared/build/ui-layout
+            shared/build/test-results/jvmTest
+            shared/build/reports/tests/jvmTest
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Build iOS app (simulator, no code signing)
         id: ios_build
@@ -88,6 +100,6 @@ jobs:
           name: YunX-simulator
           path: |
             iosApp/build/YunX-simulator.zip
-            iosApp/build/YunX-startup.png
+            iosApp/build/YunX-startup*.png
           if-no-files-found: error
           retention-days: 7

@@ -3,7 +3,7 @@ name: Unsigned iOS IPA
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, codex/ui-adaptation]
     paths: ['.github/workflows/ios-ipa.yml']
 
 permissions:
@@ -41,6 +41,9 @@ jobs:
           key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-${{ hashFiles('gradle/libs.versions.toml', 'shared/build.gradle.kts') }}
 
       - uses: gradle/actions/setup-gradle@v4
+
+      - name: Verify shared UI before distribution
+        run: ./gradlew :shared:jvmTest --console=plain
 
       - name: Build Debug for iPhone without signing
         run: >

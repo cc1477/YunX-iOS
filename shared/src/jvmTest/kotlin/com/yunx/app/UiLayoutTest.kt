@@ -9,8 +9,6 @@ import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.Density
@@ -20,7 +18,6 @@ import com.yunx.app.ui.MainScreen
 import com.yunx.app.ui.navigation.MainTab
 import com.yunx.app.ui.platform.UiPreferences
 import com.yunx.app.ui.login.CookieLoginScreen
-import com.yunx.app.ui.screens.OnboardingScreen
 import com.yunx.app.ui.screens.SupportScreen
 import com.yunx.app.ui.screens.QuarkAccountSheet
 import com.yunx.app.ui.screens.SaveStepScaffold
@@ -36,27 +33,20 @@ import kotlin.coroutines.EmptyCoroutineContext
 /** Uses the actual shared Compose layout engine, with no browser or mock HTML. */
 class UiLayoutTest {
     @Test
-    fun welcomeActionRemainsReachableOnShortScreens() {
-        for ((width, height, scale) in listOf(Triple(375, 667, 1f), Triple(667, 375, 2f))) {
-            var finished = false
-            val scene = ImageComposeScene(width, height, Density(1f, scale)) {
-                ComposeEmptyActivityTheme { OnboardingScreen({ finished = true }) }
-            }
-            try {
-                scene.render(0).close()
-                fun tap(y: Float) {
-                    val position = Offset(width / 2f, y)
-                    scene.sendPointerEvent(PointerEventType.Press, position)
-                    scene.sendPointerEvent(PointerEventType.Release, position)
+    fun freshInstallOpensTheSameHomeAsExistingInstall() {
+        val prefs = UiPreferences()
+        val previous = prefs.getBoolean("onboarding_shown", false)
+        try {
+            for ((width, height, scale) in listOf(Triple(320, 568, 1f), Triple(375, 667, 1.8f), Triple(667, 375, 2f))) {
+                for (dark in listOf(false, true)) {
+                    prefs.putBoolean("onboarding_shown", false)
+                    val fresh = render("startup-fresh-${width}x$height-$scale-$dark", width, height, scale, dark) { MainScreen() }
+                    prefs.putBoolean("onboarding_shown", true)
+                    val existing = render("startup-existing-${width}x$height-$scale-$dark", width, height, scale, dark) { MainScreen() }
+                    assertTrue(fresh.contentEquals(existing), "Legacy onboarding preference must not change the default home")
                 }
-                tap(height - 38f)
-                assertTrue(!finished, "Agreement must be required")
-                tap(height - 96f)
-                scene.render(1_000_000_000L).close()
-                tap(height - 38f)
-                assertTrue(finished, "Welcome action must be reachable at ${width}x$height, text $scale")
-            } finally { scene.close() }
-        }
+            }
+        } finally { prefs.putBoolean("onboarding_shown", previous) }
     }
 
     @Test
@@ -90,7 +80,6 @@ class UiLayoutTest {
         for ((width, height, scale) in scenarios) {
             for (dark in listOf(false, true)) {
                 val name = "${width}x$height-text$scale-${if (dark) "dark" else "light"}"
-                render("welcome-$name", width, height, scale, dark) { OnboardingScreen({}) }
                 render("login-$name", width, height, scale, dark) {
                     CookieLoginScreen("夸克网盘登录", "https://pan.quark.cn", {}, {}, validateAndSave = { false })
                 }
@@ -101,21 +90,18 @@ class UiLayoutTest {
 
     @Test
     fun mainTabsRenderWithCompactAndExpandedNavigation() {
-        val prefs = UiPreferences()
-        val onboardingWasShown = prefs.getBoolean("onboarding_shown", false)
-        prefs.putBoolean("onboarding_shown", true)
-        try {
-            for ((width, height, scale) in listOf(Triple(375, 667, 1f), Triple(667, 375, 2f), Triple(834, 1194, 1f))) {
+        for ((width, height, scale) in listOf(Triple(320, 568, 1f), Triple(375, 667, 1.8f), Triple(667, 375, 2f), Triple(834, 1194, 1f))) {
+            for (dark in listOf(false, true)) {
                 for (tab in MainTab.values()) {
-                    render("main-${tab.name}-${width}x$height-text$scale", width, height, scale) {
+                    render("main-${tab.name}-${width}x$height-text$scale-${if (dark) "dark" else "light"}", width, height, scale, dark) {
                         MainScreen(openTab = tab)
                     }
                 }
             }
-            render("main-reduced-motion", 667, 375, 2f, reducedMotion = true) {
-                MainScreen(openTab = MainTab.Drive)
-            }
-        } finally { prefs.putBoolean("onboarding_shown", onboardingWasShown) }
+        }
+        render("main-reduced-motion", 667, 375, 2f, reducedMotion = true) {
+            MainScreen(openTab = MainTab.Drive)
+        }
     }
 
     @Test
@@ -147,7 +133,9 @@ class UiLayoutTest {
     private fun render(
         name: String, width: Int, height: Int, scale: Float = 1f, dark: Boolean = false, reducedMotion: Boolean = false,
         content: @Composable () -> Unit
-    ) = javax.swing.SwingUtilities.invokeAndWait {
+    ): ByteArray {
+        var rendered = byteArrayOf()
+        javax.swing.SwingUtilities.invokeAndWait {
         val motionContext = if (reducedMotion) object : MotionDurationScale {
             override val scaleFactor = 0f
         } else EmptyCoroutineContext
@@ -161,9 +149,12 @@ class UiLayoutTest {
                 assertEquals(width, image.width)
                 assertEquals(height, image.height)
                 val bytes = image.encodeToData(EncodedImageFormat.PNG)!!.use { it.bytes }
+                rendered = bytes
                 assertTrue(bytes.size > 100)
                 File("build/ui-layout/$name.png").apply { parentFile.mkdirs(); writeBytes(bytes) }
             }
         } finally { scene.close() }
+        }
+        return rendered
     }
 }
