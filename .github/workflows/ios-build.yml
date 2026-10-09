@@ -2,7 +2,7 @@ name: iOS build
 
 on:
   push:
-    branches: [main, codex/ui-adaptation]
+    branches: [main]
   workflow_dispatch:
 
 jobs:

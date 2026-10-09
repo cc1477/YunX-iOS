@@ -52,17 +52,25 @@ fun SettingsScreen(scrollBehavior: TopAppBarScrollBehavior,
     var password by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var advanced by remember { mutableStateOf(false) }
+    var platformThreadsExpanded by remember { mutableStateOf(false) }
     Column(modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)
         .verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("下载", style = MaterialTheme.typography.titleLarge)
-        Text("使用 App 沙盒下载目录：${appDownloadDir()}")
-        Text("下载文件保存在应用内；无需存储权限。卸载应用会删除这些文件。")
+        Text("在「文件」App 中打开：我的 iPhone → YunX → Downloads。",
+            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("卸载 YunX 会删除应用内的文件。", style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
         PreferenceNumber("默认下载线程", settings.downloadThreads, 1..SettingsRepository.MAX_DOWNLOAD_THREADS) { settings.downloadThreads = it }
-        for ((platform, label) in listOf("quark" to "夸克", "uc" to "UC", "baidu" to "百度", "c139" to "移动云盘", "pan123" to "123", "pan115" to "115", "guangya" to "光鸭", "ilanzou" to "蓝奏优享", "lanzou" to "蓝奏")) {
-            PreferenceNumber("$label 下载线程", settings.downloadThreadsFor(platform), 1..SettingsRepository.MAX_DOWNLOAD_THREADS) { settings.setDownloadThreads(platform, it) }
+        TextButton(onClick = { platformThreadsExpanded = !platformThreadsExpanded }) {
+            Text(if (platformThreadsExpanded) "收起各平台下载线程" else "各平台下载线程")
         }
-        Text("迅雷下载线程固定为 8")
-        PreferenceNumber("GitHub 下载线程", settings.downloadThreadsFor("github"), 1..SettingsRepository.MAX_DOWNLOAD_THREADS) { settings.setDownloadThreads("github", it) }
+        if (platformThreadsExpanded) {
+            for ((platform, label) in listOf("quark" to "夸克", "uc" to "UC", "baidu" to "百度", "c139" to "移动云盘", "pan123" to "123", "pan115" to "115", "guangya" to "光鸭", "ilanzou" to "蓝奏优享", "lanzou" to "蓝奏")) {
+                PreferenceNumber("$label 下载线程", settings.downloadThreadsFor(platform), 1..SettingsRepository.MAX_DOWNLOAD_THREADS) { settings.setDownloadThreads(platform, it) }
+            }
+            Text("迅雷下载线程固定为 8")
+            PreferenceNumber("GitHub 下载线程", settings.downloadThreadsFor("github"), 1..SettingsRepository.MAX_DOWNLOAD_THREADS) { settings.setDownloadThreads("github", it) }
+        }
         PreferenceNumber("同时下载任务", settings.maxConcurrentDownloads, 1..16) { settings.maxConcurrentDownloads = it }
         PreferenceNumber("失败重试次数", settings.downloadRetryCount, 0..10) { settings.downloadRetryCount = it }
         PreferenceNumber("全局限速（KB/s，0 不限速）", (settings.downloadSpeedLimit / 1024).toInt(), 0..1048576) { settings.downloadSpeedLimit = it.toLong() * 1024 }

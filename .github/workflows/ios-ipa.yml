@@ -3,7 +3,7 @@ name: Unsigned iOS IPA
 on:
   workflow_dispatch:
   push:
-    branches: [main, codex/ui-adaptation]
+    branches: [main]
     paths: ['.github/workflows/ios-ipa.yml', 'shared/**', 'iosApp/**']
 
 permissions:
