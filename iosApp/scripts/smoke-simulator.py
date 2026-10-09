@@ -82,7 +82,7 @@ def main():
             debug_pid = re.search(r":\s*(\d+)\s*$", launch)[1]
             result = subprocess.run(
                 ["xcrun", "lldb", "--batch", "-p", debug_pid, "-o", "continue",
-                 "-o", "thread backtrace all", "-o", "quit"],
+                 "-k", "thread backtrace all", "-k", "quit"],
                 capture_output=True, text=True, timeout=90
             )
             (diagnostics / "lldb.log").write_text(result.stdout + result.stderr)
