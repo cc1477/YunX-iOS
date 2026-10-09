@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main, codex/ui-adaptation]
-    paths: ['.github/workflows/ios-ipa.yml']
+    paths: ['.github/workflows/ios-ipa.yml', 'shared/**', 'iosApp/**']
 
 permissions:
   contents: read

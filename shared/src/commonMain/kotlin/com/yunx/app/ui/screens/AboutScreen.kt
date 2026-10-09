@@ -92,7 +92,7 @@ fun AboutScreen(
     // 系统返回键 → 返回主页（而不是退出应用）
     BackHandler { onBack() }
     val versionName = UpdateChecker.currentVersion()
-    val versionCode = 1
+    val versionCode = UpdateChecker.installedBuild
 
     AppScaffold(
         modifier = modifier.fillMaxSize(),

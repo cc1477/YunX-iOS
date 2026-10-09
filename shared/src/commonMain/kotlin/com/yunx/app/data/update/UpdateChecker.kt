@@ -197,6 +197,7 @@ object UpdateChecker {
 
     /** 当前应用版本号（packageManager.versionName） */
     var installedVersion: String = "0.0.0"
+    var installedBuild: Int = 0
     fun currentVersion(): String = installedVersion
 
     /**

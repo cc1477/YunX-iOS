@@ -215,7 +215,7 @@ fun MainScreen(
     /** [openTab] 被消费后回调：调用方负责清空它，避免旋转/重组时重复切页 */
     onOpenTabConsumed: () -> Unit = {}
 ) {
-    var currentTab by rememberSaveable { mutableStateOf(MainTab.Resolve) }
+    var currentTab by rememberSaveable { mutableStateOf(openTab ?: MainTab.Resolve) }
 
     // 实况通知等外部来源请求切 Tab：读一次即消费（清空由调用方做）
     LaunchedEffect(openTab) {

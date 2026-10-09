@@ -136,24 +136,24 @@ class UiLayoutTest {
     ): ByteArray {
         var rendered = byteArrayOf()
         javax.swing.SwingUtilities.invokeAndWait {
-        val motionContext = if (reducedMotion) object : MotionDurationScale {
-            override val scaleFactor = 0f
-        } else EmptyCoroutineContext
-        val scene = ImageComposeScene(width, height, Density(1f, scale), coroutineContext = motionContext) {
-            ComposeEmptyActivityTheme(darkTheme = dark) { content() }
-        }
-        try {
-            // Effects can start an animation after the first frame; settle it before capture.
-            for (frame in 0L..3L) scene.render(frame * 1_000_000_000L).close()
-            scene.render(4_000_000_000L).use { image ->
-                assertEquals(width, image.width)
-                assertEquals(height, image.height)
-                val bytes = image.encodeToData(EncodedImageFormat.PNG)!!.use { it.bytes }
-                rendered = bytes
-                assertTrue(bytes.size > 100)
-                File("build/ui-layout/$name.png").apply { parentFile.mkdirs(); writeBytes(bytes) }
+            val motionContext = if (reducedMotion) object : MotionDurationScale {
+                override val scaleFactor = 0f
+            } else EmptyCoroutineContext
+            val scene = ImageComposeScene(width, height, Density(1f, scale), coroutineContext = motionContext) {
+                ComposeEmptyActivityTheme(darkTheme = dark) { content() }
             }
-        } finally { scene.close() }
+            try {
+                // Effects can start an animation after the first frame; settle it before capture.
+                for (frame in 0L..3L) scene.render(frame * 1_000_000_000L).close()
+                scene.render(4_000_000_000L).use { image ->
+                    assertEquals(width, image.width)
+                    assertEquals(height, image.height)
+                    val bytes = image.encodeToData(EncodedImageFormat.PNG)!!.use { it.bytes }
+                    rendered = bytes
+                    assertTrue(bytes.size > 100)
+                    File("build/ui-layout/$name.png").apply { parentFile.mkdirs(); writeBytes(bytes) }
+                }
+            } finally { scene.close() }
         }
         return rendered
     }
