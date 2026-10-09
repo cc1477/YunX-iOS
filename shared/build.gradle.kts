@@ -44,6 +44,7 @@ kotlin {
             api(compose.material3)
             api(compose.ui)
             api(libs.compose.material.icons.core)
+            implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
             api(libs.coroutines.core)
             api(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.datetime)

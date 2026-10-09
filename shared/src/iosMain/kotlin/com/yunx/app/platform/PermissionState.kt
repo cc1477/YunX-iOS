@@ -16,7 +16,17 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.yunx.app.platform
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
 
-// TODO Stage 4: wire real platform permission handling.
-actual suspend fun requestPermission(permission: Permission): Boolean = true
+package com.yunx.app.platform
+import platform.UserNotifications.*
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+actual suspend fun requestPermission(permission: Permission): Boolean {
+    if (permission != Permission.NOTIFICATIONS) return true // App sandbox needs no storage permission.
+    return suspendCancellableCoroutine { continuation ->
+        UNUserNotificationCenter.currentNotificationCenter().requestAuthorizationWithOptions(
+            UNAuthorizationOptionAlert or UNAuthorizationOptionBadge or UNAuthorizationOptionSound
+        ) { granted, _ -> if (continuation.isActive) continuation.resume(granted) }
+    }
+}

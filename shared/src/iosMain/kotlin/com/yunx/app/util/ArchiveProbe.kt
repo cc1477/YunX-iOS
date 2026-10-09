@@ -18,7 +18,8 @@
 
 package com.yunx.app.util
 
-// TODO Stage 4: platform-specific package integrity checks, if needed.
+// APK/Dex archive probes are Android-specific and have no counterpart on iOS.
+// Returning no findings means "not applicable", not that an iOS signature was verified.
 actual object ArchiveProbe {
     actual fun fast(): List<Int> = emptyList()
     actual fun deep(): List<Int> = emptyList()

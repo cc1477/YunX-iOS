@@ -48,9 +48,8 @@ internal suspend fun HttpClient.executeRequest(builder: HttpRequestBuilder): Htt
     HttpMethod.Head -> head(builder.url.build().toString()) { takeFrom(builder) }
     else -> request(builder)
 }
-internal fun String.toRequestBody(mediaType: String): Any = if (mediaType.startsWith("application/x-www-form-urlencoded") && contains('=')) {
-    FormDataContent(parseQueryString(this))
-} else TextContent(this, ContentType.parse(mediaType))
+/** Already encoded upstream forms remain byte-identical; native FormBody uses FormDataContent. */
+internal fun String.toRequestBody(mediaType: String): TextContent = TextContent(this, ContentType.parse(mediaType))
 /** Java form encoding (space='+', '*' remains literal, '~' is encoded). */
 internal fun formEncode(value: String): String = buildString {
     value.encodeToByteArray().forEach { byte ->

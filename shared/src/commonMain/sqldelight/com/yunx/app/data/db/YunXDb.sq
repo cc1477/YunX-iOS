@@ -1,0 +1,321 @@
+/*
+ * YunX (云析) - A network drive share-link parser and high-speed downloader for Android.
+ * Copyright (C) 2026 CYQawa
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+CREATE TABLE baidu_account (
+    id TEXT NOT NULL PRIMARY KEY,
+    cookie TEXT NOT NULL,
+    nickname TEXT NOT NULL,
+    updatedAt INTEGER NOT NULL
+);
+
+CREATE TABLE bookmark (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    link TEXT NOT NULL,
+    title TEXT NOT NULL,
+    platform TEXT NOT NULL,
+    pwd TEXT NOT NULL,
+    category TEXT NOT NULL,
+    homePinned INTEGER AS Boolean NOT NULL DEFAULT 0,
+    homeLabel TEXT NOT NULL DEFAULT '',
+    createTime INTEGER NOT NULL
+);
+
+CREATE TABLE c139_account (
+    id TEXT NOT NULL PRIMARY KEY,
+    cookie TEXT NOT NULL,
+    nickname TEXT NOT NULL,
+    authorization TEXT NOT NULL,
+    updatedAt INTEGER NOT NULL
+);
+
+CREATE TABLE download_task (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    url TEXT NOT NULL,
+    fileName TEXT NOT NULL,
+    totalSize INTEGER NOT NULL,
+    downloadedSize INTEGER NOT NULL,
+    status INTEGER AS Int NOT NULL,
+    errorMsg TEXT NOT NULL,
+    savePath TEXT NOT NULL,
+    requestHeadersJson TEXT NOT NULL DEFAULT '{}',
+    chunkCount INTEGER AS Int NOT NULL DEFAULT 0,
+    plannedTotalSize INTEGER NOT NULL DEFAULT 0,
+    cleanupId TEXT NOT NULL DEFAULT '',
+    platform TEXT NOT NULL DEFAULT '',
+    engineTaskId TEXT NOT NULL DEFAULT '',
+    avgSpeed INTEGER NOT NULL DEFAULT 0,
+    createTime INTEGER NOT NULL
+);
+
+CREATE TABLE guangya_account (
+    id TEXT NOT NULL PRIMARY KEY,
+    accessToken TEXT NOT NULL,
+    refreshToken TEXT NOT NULL,
+    deviceId TEXT NOT NULL,
+    deviceSign TEXT NOT NULL,
+    account TEXT NOT NULL,
+    nickname TEXT NOT NULL,
+    updatedAt INTEGER NOT NULL
+);
+
+CREATE TABLE ilanzou_account (
+    id TEXT NOT NULL PRIMARY KEY,
+    appToken TEXT NOT NULL,
+    uuid TEXT NOT NULL,
+    account TEXT NOT NULL,
+    password TEXT NOT NULL,
+    userId TEXT NOT NULL,
+    nickname TEXT NOT NULL,
+    updatedAt INTEGER NOT NULL
+);
+
+CREATE TABLE lanzou_account (
+    id TEXT NOT NULL PRIMARY KEY,
+    cookie TEXT NOT NULL,
+    nickname TEXT NOT NULL,
+    updatedAt INTEGER NOT NULL
+);
+
+CREATE TABLE pan115_account (
+    id TEXT NOT NULL PRIMARY KEY,
+    cookie TEXT NOT NULL,
+    nickname TEXT NOT NULL,
+    updatedAt INTEGER NOT NULL
+);
+
+CREATE TABLE pan123_account (
+    id TEXT NOT NULL PRIMARY KEY,
+    accessToken TEXT NOT NULL,
+    account TEXT NOT NULL,
+    nickname TEXT NOT NULL,
+    updatedAt INTEGER NOT NULL
+);
+
+CREATE TABLE quark_account (
+    id TEXT NOT NULL PRIMARY KEY,
+    cookie TEXT NOT NULL,
+    nickname TEXT NOT NULL,
+    updatedAt INTEGER NOT NULL
+);
+
+CREATE TABLE uc_account (
+    id TEXT NOT NULL PRIMARY KEY,
+    cookie TEXT NOT NULL,
+    nickname TEXT NOT NULL,
+    updatedAt INTEGER NOT NULL
+);
+
+CREATE TABLE xunlei_account (
+    id TEXT NOT NULL PRIMARY KEY,
+    accessToken TEXT NOT NULL,
+    refreshToken TEXT NOT NULL,
+    deviceId TEXT NOT NULL,
+    captchaToken TEXT NOT NULL,
+    nickname TEXT NOT NULL,
+    authType TEXT NOT NULL DEFAULT '',
+    updatedAt INTEGER NOT NULL
+);
+
+BaiduAccountDao_observeAccount:
+SELECT id, cookie, nickname, updatedAt FROM baidu_account WHERE id = 'baidu';
+
+BaiduAccountDao_upsert:
+INSERT OR REPLACE INTO baidu_account (id, cookie, nickname, updatedAt) VALUES (:id, :cookie, :nickname, :updatedAt);
+
+BaiduAccountDao_getAccount:
+SELECT id, cookie, nickname, updatedAt FROM baidu_account WHERE id = 'baidu';
+
+BaiduAccountDao_clear:
+DELETE FROM baidu_account WHERE id = 'baidu';
+
+BookmarkDao_observeAll:
+SELECT id, link, title, platform, pwd, category, homePinned, homeLabel, createTime FROM bookmark ORDER BY createTime DESC;
+
+BookmarkDao_observeHomePinned:
+SELECT id, link, title, platform, pwd, category, homePinned, homeLabel, createTime FROM bookmark WHERE homePinned = 1 ORDER BY createTime DESC;
+
+BookmarkDao_observeCategories:
+SELECT DISTINCT category FROM bookmark ORDER BY category;
+
+BookmarkDao_insert:
+INSERT INTO bookmark (id, link, title, platform, pwd, category, homePinned, homeLabel, createTime) VALUES (nullif(:id, 0), :link, :title, :platform, :pwd, :category, :homePinned, :homeLabel, :createTime);
+
+BookmarkDao_updateCategory:
+UPDATE bookmark SET category = :category WHERE id = :id;
+
+BookmarkDao_updateHomePinned:
+UPDATE bookmark SET homePinned = :pinned WHERE id = :id;
+
+BookmarkDao_updateHomeLabel:
+UPDATE bookmark SET homeLabel = :label WHERE id = :id;
+
+BookmarkDao_delete:
+DELETE FROM bookmark WHERE id = :id;
+
+C139AccountDao_observeAccount:
+SELECT id, cookie, nickname, authorization, updatedAt FROM c139_account WHERE id = 'c139';
+
+C139AccountDao_upsert:
+INSERT OR REPLACE INTO c139_account (id, cookie, nickname, authorization, updatedAt) VALUES (:id, :cookie, :nickname, :authorization, :updatedAt);
+
+C139AccountDao_getAccount:
+SELECT id, cookie, nickname, authorization, updatedAt FROM c139_account WHERE id = 'c139';
+
+C139AccountDao_clear:
+DELETE FROM c139_account WHERE id = 'c139';
+
+DownloadTaskDao_observeAll:
+SELECT id, url, fileName, totalSize, downloadedSize, status, errorMsg, savePath, requestHeadersJson, chunkCount, plannedTotalSize, cleanupId, platform, engineTaskId, avgSpeed, createTime FROM download_task ORDER BY createTime DESC;
+
+DownloadTaskDao_insert:
+INSERT INTO download_task (id, url, fileName, totalSize, downloadedSize, status, errorMsg, savePath, requestHeadersJson, chunkCount, plannedTotalSize, cleanupId, platform, engineTaskId, avgSpeed, createTime) VALUES (nullif(:id, 0), :url, :fileName, :totalSize, :downloadedSize, :status, :errorMsg, :savePath, :requestHeadersJson, :chunkCount, :plannedTotalSize, :cleanupId, :platform, :engineTaskId, :avgSpeed, :createTime);
+
+DownloadTaskDao_get:
+SELECT id, url, fileName, totalSize, downloadedSize, status, errorMsg, savePath, requestHeadersJson, chunkCount, plannedTotalSize, cleanupId, platform, engineTaskId, avgSpeed, createTime FROM download_task WHERE id = :id;
+
+DownloadTaskDao_updateProgress:
+UPDATE download_task SET status = :status, downloadedSize = :downloadedSize, totalSize = :totalSize WHERE id = :id;
+
+DownloadTaskDao_updatePlan:
+UPDATE download_task SET chunkCount = :chunkCount, plannedTotalSize = :totalSize WHERE id = :id;
+
+DownloadTaskDao_updateRequestHeaders:
+UPDATE download_task SET requestHeadersJson = :encryptedHeaders WHERE id = :id;
+
+DownloadTaskDao_markInterruptedAsPaused:
+UPDATE download_task SET status = 2 WHERE status = 1 OR status = 0;
+
+DownloadTaskDao_updateStatus:
+UPDATE download_task SET status = :status WHERE id = :id;
+
+DownloadTaskDao_updateError:
+UPDATE download_task SET errorMsg = :errorMsg WHERE id = :id;
+
+DownloadTaskDao_complete:
+UPDATE download_task SET status = :status, savePath = :savePath, avgSpeed = :avgSpeed WHERE id = :id;
+
+DownloadTaskDao_delete:
+DELETE FROM download_task WHERE id = :id;
+
+DownloadTaskDao_updateEngineTaskId:
+UPDATE download_task SET engineTaskId = :engineTaskId WHERE id = :id;
+
+DownloadTaskDao_updateFileName:
+UPDATE download_task SET fileName = :name WHERE id = :id;
+
+DownloadTaskDao_listSyncableEngineTasks:
+SELECT id, url, fileName, totalSize, downloadedSize, status, errorMsg, savePath, requestHeadersJson, chunkCount, plannedTotalSize, cleanupId, platform, engineTaskId, avgSpeed, createTime FROM download_task WHERE engineTaskId != '' AND status != 3 AND status != 4;
+
+GuangYaAccountDao_observeAccount:
+SELECT id, accessToken, refreshToken, deviceId, deviceSign, account, nickname, updatedAt FROM guangya_account WHERE id = 'guangya';
+
+GuangYaAccountDao_upsert:
+INSERT OR REPLACE INTO guangya_account (id, accessToken, refreshToken, deviceId, deviceSign, account, nickname, updatedAt) VALUES (:id, :accessToken, :refreshToken, :deviceId, :deviceSign, :account, :nickname, :updatedAt);
+
+GuangYaAccountDao_getAccount:
+SELECT id, accessToken, refreshToken, deviceId, deviceSign, account, nickname, updatedAt FROM guangya_account WHERE id = 'guangya';
+
+GuangYaAccountDao_clear:
+DELETE FROM guangya_account WHERE id = 'guangya';
+
+ILanzouAccountDao_observeAccount:
+SELECT id, appToken, uuid, account, password, userId, nickname, updatedAt FROM ilanzou_account WHERE id = 'ilanzou';
+
+ILanzouAccountDao_upsert:
+INSERT OR REPLACE INTO ilanzou_account (id, appToken, uuid, account, password, userId, nickname, updatedAt) VALUES (:id, :appToken, :uuid, :account, :password, :userId, :nickname, :updatedAt);
+
+ILanzouAccountDao_getAccount:
+SELECT id, appToken, uuid, account, password, userId, nickname, updatedAt FROM ilanzou_account WHERE id = 'ilanzou';
+
+ILanzouAccountDao_clear:
+DELETE FROM ilanzou_account WHERE id = 'ilanzou';
+
+LanzouAccountDao_observeAccount:
+SELECT id, cookie, nickname, updatedAt FROM lanzou_account WHERE id = 'lanzou';
+
+LanzouAccountDao_upsert:
+INSERT OR REPLACE INTO lanzou_account (id, cookie, nickname, updatedAt) VALUES (:id, :cookie, :nickname, :updatedAt);
+
+LanzouAccountDao_getAccount:
+SELECT id, cookie, nickname, updatedAt FROM lanzou_account WHERE id = 'lanzou';
+
+LanzouAccountDao_clear:
+DELETE FROM lanzou_account WHERE id = 'lanzou';
+
+Pan115AccountDao_observeAccount:
+SELECT id, cookie, nickname, updatedAt FROM pan115_account WHERE id = 'pan115';
+
+Pan115AccountDao_upsert:
+INSERT OR REPLACE INTO pan115_account (id, cookie, nickname, updatedAt) VALUES (:id, :cookie, :nickname, :updatedAt);
+
+Pan115AccountDao_getAccount:
+SELECT id, cookie, nickname, updatedAt FROM pan115_account WHERE id = 'pan115';
+
+Pan115AccountDao_clear:
+DELETE FROM pan115_account WHERE id = 'pan115';
+
+Pan123AccountDao_observeAccount:
+SELECT id, accessToken, account, nickname, updatedAt FROM pan123_account WHERE id = 'pan123';
+
+Pan123AccountDao_upsert:
+INSERT OR REPLACE INTO pan123_account (id, accessToken, account, nickname, updatedAt) VALUES (:id, :accessToken, :account, :nickname, :updatedAt);
+
+Pan123AccountDao_getAccount:
+SELECT id, accessToken, account, nickname, updatedAt FROM pan123_account WHERE id = 'pan123';
+
+Pan123AccountDao_clear:
+DELETE FROM pan123_account WHERE id = 'pan123';
+
+QuarkAccountDao_observeAccount:
+SELECT id, cookie, nickname, updatedAt FROM quark_account WHERE id = 'quark';
+
+QuarkAccountDao_upsert:
+INSERT OR REPLACE INTO quark_account (id, cookie, nickname, updatedAt) VALUES (:id, :cookie, :nickname, :updatedAt);
+
+QuarkAccountDao_getAccount:
+SELECT id, cookie, nickname, updatedAt FROM quark_account WHERE id = 'quark';
+
+QuarkAccountDao_clear:
+DELETE FROM quark_account WHERE id = 'quark';
+
+UCAccountDao_observeAccount:
+SELECT id, cookie, nickname, updatedAt FROM uc_account WHERE id = 'uc';
+
+UCAccountDao_upsert:
+INSERT OR REPLACE INTO uc_account (id, cookie, nickname, updatedAt) VALUES (:id, :cookie, :nickname, :updatedAt);
+
+UCAccountDao_getAccount:
+SELECT id, cookie, nickname, updatedAt FROM uc_account WHERE id = 'uc';
+
+UCAccountDao_clear:
+DELETE FROM uc_account WHERE id = 'uc';
+
+XunleiAccountDao_observeAccount:
+SELECT id, accessToken, refreshToken, deviceId, captchaToken, nickname, authType, updatedAt FROM xunlei_account WHERE id = 'xunlei';
+
+XunleiAccountDao_upsert:
+INSERT OR REPLACE INTO xunlei_account (id, accessToken, refreshToken, deviceId, captchaToken, nickname, authType, updatedAt) VALUES (:id, :accessToken, :refreshToken, :deviceId, :captchaToken, :nickname, :authType, :updatedAt);
+
+XunleiAccountDao_getAccount:
+SELECT id, accessToken, refreshToken, deviceId, captchaToken, nickname, authType, updatedAt FROM xunlei_account WHERE id = 'xunlei';
+
+XunleiAccountDao_clear:
+DELETE FROM xunlei_account WHERE id = 'xunlei';
+
+lastInsertRowId:
+SELECT last_insert_rowid();

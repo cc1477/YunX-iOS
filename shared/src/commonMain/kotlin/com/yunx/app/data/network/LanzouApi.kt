@@ -1,5 +1,3 @@
-@file:OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
-
 /*
  * YunX (云析) - A network drive share-link parser and high-speed downloader for Android.
  * Copyright (C) 2026 CYQawa
@@ -17,6 +15,8 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+
+@file:OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
 
 package com.yunx.app.data.network
 
@@ -780,7 +780,7 @@ class LanzouApi(
                 // 分享页可能先返回 acw_sc__v2 人机校验页：计算 Cookie 后重放
                 val challenge = lanzouChallengeCookie(body)
                 if (challenge != null) {
-                    if (!challenged.apply { append(host) }) throw IllegalStateException("蓝奏需要进一步验证，请在分享页完成验证后重试")
+                    if (!challenged.add(host)) throw IllegalStateException("蓝奏需要进一步验证，请在分享页完成验证后重试")
                     setCookie(host, "acw_sc__v2", challenge)
                     return@let
                 }

@@ -1,0 +1,40 @@
+/*
+ * YunX (云析) - A network drive share-link parser and high-speed downloader for Android.
+ * Copyright (C) 2026 CYQawa
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package com.yunx.app.data.db
+
+import kotlinx.datetime.Clock
+
+
+/**
+ * 123 云盘登录凭证（JWT token 落库，后续 API 请求携带 Authorization: Bearer <token>）。
+ * 凭证形态为 JWT（Bearer Token），两条登录路径产出的是同一种东西：
+ * 网页登录后 localStorage 的 authorToken，或账号密码接口 sign_in 返回的 data.token（同源同形）。
+ * JWT exp 约 90 天后过期，token 失效（code 非 0 或 401）时重新登录。
+ */
+
+data class Pan123AccountEntity(
+
+    val id: String = "pan123",
+    /** Bearer JWT（ResolveViewModel.currentCredential 返回，作为 repository 的 cookie 参数） */
+    val accessToken: String = "",
+    /** 登录账号（账号密码登录时是手机号/邮箱；网页登录拿不到，留空后账号页回退显示昵称） */
+    val account: String = "",
+    val nickname: String = "",
+    val updatedAt: Long = Clock.System.now().toEpochMilliseconds()
+)

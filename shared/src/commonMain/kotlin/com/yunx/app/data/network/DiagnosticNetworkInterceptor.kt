@@ -59,5 +59,7 @@ val DiagnosticNetworkInterceptor = createClientPlugin("DiagnosticNetworkIntercep
 
 private fun String.diagnosticPrefix(): String {
     val bytes = encodeToByteArray()
-    return bytes.copyOfRange(0, minOf(bytes.size, 1536)).decodeToString()
+    var end = minOf(bytes.size, 1536)
+    if (end < bytes.size) while (end > 0 && bytes[end].toInt() and 0xc0 == 0x80) end--
+    return bytes.copyOfRange(0, end).decodeToString()
 }
