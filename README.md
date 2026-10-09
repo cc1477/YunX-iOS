@@ -9,7 +9,15 @@ Stage 5 完成构建文档。2026-10-09 已通过 JVM 编译与 3 项共用回�
 [通过的 CI](https://github.com/cc1477/YunX-iOS/actions/runs/37901341331) 提供
 [模拟器应用和启动截图](https://github.com/cc1477/YunX-iOS/actions/runs/37901341331/artifacts/11603375521)，
 产物保留至 2026-10-16；它仅供 Apple Silicon iOS 模拟器使用，不是可安装到真机的 IPA。
-真机、Release、签名、登录和下载功能尚未验证。
+真机运行、Release 构建、签名、登录和下载功能尚未通过验证；未签名 Debug 真机包见下方。
+
+## 未签名真机 IPA
+
+[下载 YunX-unsigned-ipa](https://github.com/cc1477/YunX-iOS/actions/runs/37919720624/artifacts/11611439256)（保留至 2026-10-23）。下载外层 ZIP 后解压，取出 `YunX-unsigned.ipa`；同包附有 SHA-256 和构建信息。
+
+这是 Debug 配置的 iPhone arm64 IPA，最低 iOS 15.0，bundle ID 为 `com.yunx.app.ios`。已核验 `Payload/YunX.app`、主程序与动态库的真机平台标记；不含代码签名或描述文件，需要自行签名后安装。真机运行、登录与下载尚未验证。首次 Release 构建因 Kotlin/Native 优化阶段的 Java heap space 失败，改用 Debug 后[构建和打包通过](https://github.com/cc1477/YunX-iOS/actions/runs/37919720624)。
+
+需要更新包时，可在 Actions 的 **Unsigned iOS IPA** 工作流中选择 **Run workflow**。此工作流生成真机包，与 **iOS build** 的模拟器包用途不同。
 
 ## 目录结构
 
