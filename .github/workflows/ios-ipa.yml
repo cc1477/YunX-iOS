@@ -36,10 +36,10 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Build Release for iPhone without signing
+      - name: Build Debug for iPhone without signing
         run: >
           xcodebuild -project iosApp/iosApp.xcodeproj -scheme YunX
-          -configuration Release -sdk iphoneos
+          -configuration Debug -sdk iphoneos
           -destination 'generic/platform=iOS'
           -derivedDataPath iosApp/build-device
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
@@ -48,7 +48,7 @@ jobs:
       - name: Verify device application and package IPA
         working-directory: iosApp/build-device
         run: |
-          APP="Build/Products/Release-iphoneos/YunX.app"
+          APP="Build/Products/Debug-iphoneos/YunX.app"
           /usr/libexec/PlistBuddy -c 'Print :CFBundleSupportedPlatforms:0' "$APP/Info.plist" | /usr/bin/grep -x iPhoneOS
           test "$(xcrun lipo -archs "$APP/YunX")" = arm64
           test "$(xcrun lipo -archs "$APP/Frameworks/shared.framework/shared")" = arm64
@@ -60,7 +60,7 @@ jobs:
           ditto -c -k --keepParent Payload YunX-unsigned.ipa
           shasum -a 256 YunX-unsigned.ipa > YunX-unsigned.ipa.sha256
           unzip -t YunX-unsigned.ipa
-          echo "Unsigned Release arm64 IPA for iPhone; requires signing before installation." > BUILD-INFO.txt
+          echo "Unsigned Debug arm64 IPA for iPhone; requires signing before installation." > BUILD-INFO.txt
           git -C ../.. rev-parse HEAD >> BUILD-INFO.txt
           xcodebuild -version >> BUILD-INFO.txt
 
