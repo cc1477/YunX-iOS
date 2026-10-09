@@ -24,8 +24,9 @@ jobs:
           xcodebuild -version
           xcodebuild -version | awk 'NR == 2 { print "build=" $3 }' >> "$GITHUB_OUTPUT"
 
-      - name: Cache Kotlin Native compiler and dependency caches
-        uses: actions/cache@v4
+      - name: Restore Kotlin Native compiler and dependency caches
+        id: konan_cache
+        uses: actions/cache/restore@v4
         with:
           path: ~/.konan
           key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-${{ hashFiles('gradle/libs.versions.toml', 'shared/build.gradle.kts') }}
@@ -40,6 +41,7 @@ jobs:
         run: ./gradlew :shared:jvmTest --console=plain
 
       - name: Build iOS app (simulator, no code signing)
+        id: ios_build
         working-directory: iosApp
         run: >
           xcodebuild -project iosApp.xcodeproj -scheme YunX
@@ -49,7 +51,15 @@ jobs:
           CODE_SIGNING_ALLOWED=NO build
 
       - name: Stop Gradle before simulator boot
+        if: always()
         run: ./gradlew --stop
+
+      - name: Save Kotlin Native compiler and dependency caches
+        if: always() && steps.konan_cache.outputs.cache-hit != 'true' && steps.ios_build.outcome != 'skipped'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.konan
+          key: ${{ steps.konan_cache.outputs.cache-primary-key }}
 
       - name: Launch app in an iPhone simulator
         run: >
