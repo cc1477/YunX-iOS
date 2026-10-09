@@ -1,0 +1,8 @@
+// SDK conditions select the Kotlin/Native binary; no host-specific absolute path.
+KOTLIN_FRAMEWORK_BUILD_TYPE = Release
+KOTLIN_TARGET = IosArm64
+KOTLIN_TARGET[sdk=iphonesimulator*] = IosSimulatorArm64
+SHARED_FRAMEWORK_PATH = $(SRCROOT)/../shared/build/bin/iosArm64/releaseFramework
+SHARED_FRAMEWORK_PATH[sdk=iphonesimulator*] = $(SRCROOT)/../shared/build/bin/iosSimulatorArm64/releaseFramework
+FRAMEWORK_SEARCH_PATHS = $(inherited) "$(SHARED_FRAMEWORK_PATH)"
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks

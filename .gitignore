@@ -1,0 +1,34 @@
+# Gradle / Kotlin / native outputs
+.gradle/
+.kotlin/
+**/build/
+.kotlin-native/
+local.properties
+
+# IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# Xcode / macOS
+.DS_Store
+DerivedData/
+**/xcuserdata/
+*.xcuserstate
+*.moved-aside
+*.xccheckout
+*.xcscmblueprint
+*.hmap
+*.ipa
+*.dSYM/
+*.dSYM.zip
+
+# Local tools and read-only upstream checkouts
+.tools/
+.upstream/
+
+# Signing material
+*.p12
+*.mobileprovision
