@@ -18,6 +18,7 @@
 
 package com.yunx.app.ui.screens
 
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -463,7 +464,8 @@ private fun ResolveInputContent(
             value = link,
             onValueChange = onLinkChange,
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("例如：https://pan.quark.cn/s/xxxx 或 迅雷口令") },
+            label = { Text("分享链接或口令") },
+            placeholder = { Text("https://pan.quark.cn/s/xxxx") },
             leadingIcon = { Icon(Icons.Outlined.Link, contentDescription = null) },
             trailingIcon = {
                 if (link.isNotEmpty()) {
@@ -506,7 +508,7 @@ private fun ResolveInputContent(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp),
+                .heightIn(min = 48.dp),
             enabled = link.isNotBlank() && !isLoading
         ) {
             if (isLoading) {
@@ -556,9 +558,6 @@ private fun ResolveInputContent(
         )
     }
 }
-
-/** 主页快捷方式列数（4 列在窄屏也能放下两字标题，观感贴近桌面图标网格） */
-private const val HOME_SHORTCUT_COLUMNS = 4
 
 /**
  * 主页快捷方式区块：展示已「添加到主页」的收藏链接。
@@ -631,20 +630,24 @@ private fun HomeShortcutsSection(
                 }
             }
         } else {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                bookmarks.chunked(HOME_SHORTCUT_COLUMNS).forEach { rowItems ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        rowItems.forEach { bookmark ->
-                            HomeShortcutTile(
-                                bookmark = bookmark,
-                                modifier = Modifier.weight(1f),
-                                onClick = { onOpen(bookmark) },
-                                onLongClick = { removing = bookmark }
-                            )
-                        }
-                        // 末行不足一列时补空位，保证每个格子宽度一致
-                        repeat(HOME_SHORTCUT_COLUMNS - rowItems.size) {
-                            Spacer(modifier = Modifier.weight(1f))
+            androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale.coerceAtLeast(1f)
+                val columns = ((maxWidth.value + 12) / (72 * fontScale + 12)).toInt().coerceIn(1, 6)
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    bookmarks.chunked(columns).forEach { rowItems ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            rowItems.forEach { bookmark ->
+                                HomeShortcutTile(
+                                    bookmark = bookmark,
+                                    modifier = Modifier.weight(1f),
+                                    onClick = { onOpen(bookmark) },
+                                    onLongClick = { removing = bookmark }
+                                )
+                            }
+                            // 末行不足一列时补空位，保证每个格子宽度一致
+                            repeat(columns - rowItems.size) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
                         }
                     }
                 }

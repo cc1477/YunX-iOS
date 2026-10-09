@@ -18,6 +18,8 @@
 
 package com.yunx.app.ui.login
 
+import androidx.compose.foundation.layout.heightIn
+import com.yunx.app.ui.components.AppScaffold
 import com.yunx.app.ui.platform.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -43,7 +45,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -88,7 +89,7 @@ fun ILanzouLoginScreen(
     val snackbarHostState = rememberGlobalSnackbarHostState()
     BackHandler(enabled = !isSaving) { onBack() }
 
-    Scaffold(
+    AppScaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
@@ -184,7 +185,7 @@ fun ILanzouLoginScreen(
                         }
                     }
                 },
-                modifier = Modifier.fillMaxWidth().height(48.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 enabled = account.isNotBlank() && password.isNotBlank() && !isSaving
             ) {
                 if (isSaving) {

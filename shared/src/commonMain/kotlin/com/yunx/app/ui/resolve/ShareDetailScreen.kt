@@ -694,15 +694,15 @@ internal fun CrumbBar(
             val isLast = i == crumbs.size - 1
             if (!isLast) {
                 // 可点击层级：点击回退到该目录
-                Text(
-                    text = name,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    modifier = Modifier
-                        .clickable { onNavigate(i) }
-                        .padding(horizontal = 4.dp, vertical = 2.dp)
-                )
+                TextButton(onClick = { onNavigate(i) }) {
+                    Text(
+                        text = name,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                }
                 Icon(
                     imageVector = Icons.Outlined.ChevronRight,
                     contentDescription = null,

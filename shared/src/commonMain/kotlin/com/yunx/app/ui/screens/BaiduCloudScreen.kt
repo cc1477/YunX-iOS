@@ -18,6 +18,8 @@
 
 package com.yunx.app.ui.screens
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import com.yunx.app.ui.SnackbarController
 import com.yunx.app.ui.platform.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -631,6 +633,7 @@ LaunchedEffect(Unit) { viewModel.openMoveRoot() }
 Column(
     modifier = Modifier
         .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
         .padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 32.dp)
 ) {
     StepHeader(title = "移动到", subtitle = subtitle, onBack = onBack)
@@ -702,7 +705,7 @@ Column(
                 if (viewModel.multiSelectMode) viewModel.moveSelected(to) else viewModel.moveFile(to)
                 onDone()
             },
-            modifier = Modifier.fillMaxWidth().height(50.dp)
+            modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp)
         ) {
             Icon(Icons.Outlined.DriveFileMove, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(8.dp))

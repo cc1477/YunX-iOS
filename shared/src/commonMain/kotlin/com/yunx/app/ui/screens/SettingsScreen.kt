@@ -20,9 +20,12 @@ package com.yunx.app.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import com.yunx.app.data.backup.AuthBackupManager
@@ -33,7 +36,7 @@ import com.yunx.app.util.AppLinks
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(scrollBehavior: TopAppBarScrollBehavior,
     themeRowModifier: Modifier = Modifier, aboutRowModifier: Modifier = Modifier,
@@ -82,7 +85,7 @@ fun SettingsScreen(scrollBehavior: TopAppBarScrollBehavior,
         OutlinedTextField(password, { password = it }, label = { Text("备份密码（可选）") },
             visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
         OutlinedTextField(backup, { backup = it }, label = { Text("粘贴 / 查看备份内容") }, modifier = Modifier.fillMaxWidth(), maxLines = 6)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(enabled = !busy, onClick = {
                 busy = true
                 scope.launch {
@@ -102,7 +105,7 @@ fun SettingsScreen(scrollBehavior: TopAppBarScrollBehavior,
                 }
             }) { Text("导入认证") }
         }
-        Row {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(enabled = backup.isNotBlank() && !busy, onClick = { copyToClipboard(backup); result = "备份已复制" }) { Text("复制备份") }
             TextButton(enabled = backup.isNotBlank() && !busy, onClick = { scope.launch { result = if (backupManager.saveToDownloads(backup, password.isNotBlank())) "已保存至 App 下载目录" else "保存失败" } }) { Text("保存备份") }
         }
@@ -127,9 +130,10 @@ fun SettingsScreen(scrollBehavior: TopAppBarScrollBehavior,
 @Composable
 private fun PreferenceSwitch(label: String, initial: Boolean, save: (Boolean) -> Unit) {
     var value by remember(label) { mutableStateOf(initial) }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+    Row(Modifier.fillMaxWidth().toggleable(value, role = Role.Switch, onValueChange = { value = it; save(it) })
+        .heightIn(min = 48.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, modifier = Modifier.weight(1f))
-        Switch(value, { value = it; save(it) })
+        Switch(value, onCheckedChange = null)
     }
 }
 @Composable

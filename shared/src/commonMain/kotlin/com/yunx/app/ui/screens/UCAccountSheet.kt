@@ -31,10 +31,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -66,20 +62,11 @@ fun UCAccountSheet(
     val snackbarHostState = rememberGlobalSnackbarHostState()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scrollState = rememberScrollState()
-    val sheetNestedScroll = remember(scrollState) {
-        object : NestedScrollConnection {
-            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                val dy = available.y
-                if (dy > 0 && scrollState.value >= scrollState.maxValue) return Offset(0f, dy)
-                return Offset.Zero
-            }
-        }
-    }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = MaterialTheme.colorScheme.surface) {
         Column(
             modifier = Modifier.fillMaxWidth()
-                .then(if (showFullCookie) Modifier.fillMaxHeight().verticalScroll(scrollState).nestedScroll(sheetNestedScroll) else Modifier)
+                .verticalScroll(scrollState)
                 .padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 32.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -90,7 +77,7 @@ fun UCAccountSheet(
                     }
                 }
                 Spacer(modifier = Modifier.width(16.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(account.nickname, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -125,7 +112,7 @@ fun UCAccountSheet(
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
-            Button(onClick = { showLogoutConfirm = true }, modifier = Modifier.fillMaxWidth().height(48.dp),
+            Button(onClick = { showLogoutConfirm = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError)) {
                 Icon(Icons.Outlined.Logout, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp)); Text("退出登录")

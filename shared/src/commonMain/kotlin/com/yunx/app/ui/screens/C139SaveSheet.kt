@@ -207,7 +207,7 @@ internal fun C139SaveContent(
                 enabled = !saving,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp)
+                    .heightIn(min = 50.dp)
             ) {
                 if (saving) {
                     CircularProgressIndicator(

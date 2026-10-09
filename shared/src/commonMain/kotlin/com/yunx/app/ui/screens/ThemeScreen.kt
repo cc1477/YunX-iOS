@@ -18,8 +18,8 @@
 
 package com.yunx.app.ui.screens
 
+import com.yunx.app.ui.components.AppScaffold
 import androidx.compose.material.icons.filled.Cloud
-
 import com.yunx.app.ui.platform.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -74,7 +74,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -180,7 +179,7 @@ fun ThemeScreen(
         settingsRepo.appIconVariant = variant
     }
 
-    Scaffold(
+    AppScaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
@@ -684,6 +683,7 @@ private fun ColorPickerDialog(
         ) {
             Column(
                 modifier = Modifier
+                    .verticalScroll(rememberScrollState())
                     .padding(24.dp)
                     .fillMaxWidth()
             ) {

@@ -305,6 +305,7 @@ fun DownloadScreen(
 }
 
 /** 批量操作栏：全部暂停 / 全部开始 / 删除全部（Material3 紧凑按钮，无可用操作时禁用） */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun DownloadBatchBar(
     hasActive: Boolean,
@@ -313,11 +314,12 @@ private fun DownloadBatchBar(
     onResumeAll: () -> Unit,
     onDeleteAll: () -> Unit
 ) {
-    Row(
+    androidx.compose.foundation.layout.FlowRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         TextButton(onClick = onPauseAll, enabled = hasActive) {
             Icon(
@@ -337,7 +339,6 @@ private fun DownloadBatchBar(
             Spacer(modifier = Modifier.width(4.dp))
             Text("全部开始")
         }
-        Spacer(modifier = Modifier.weight(1f))
         TextButton(onClick = onDeleteAll) {
             Icon(
                 imageVector = Icons.Outlined.Delete,
@@ -422,7 +423,7 @@ private fun DeleteConfirmDialog(
 @Composable
 private fun EmptyDownloadState(modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier.padding(32.dp),
+        modifier = modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Surface(

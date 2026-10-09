@@ -18,6 +18,8 @@
 
 package com.yunx.app.ui.login
 
+import androidx.compose.foundation.layout.heightIn
+import com.yunx.app.ui.components.AppScaffold
 import com.yunx.app.ui.platform.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -48,7 +50,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -142,7 +143,7 @@ fun GuangYaLoginScreen(
         }
     }
 
-    Scaffold(
+    AppScaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
@@ -241,7 +242,7 @@ fun GuangYaLoginScreen(
                             }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                     enabled = account.isNotBlank() && password.isNotBlank() && !isSaving
                 ) {
                     if (isSaving) {
@@ -308,7 +309,7 @@ fun GuangYaLoginScreen(
                     OutlinedButton(
                         onClick = sendSmsCode,
                         enabled = phone.isNotBlank() && countdown == 0 && !isSendingSms,
-                        modifier = Modifier.height(56.dp)
+                        modifier = Modifier.heightIn(min = 56.dp)
                     ) {
                         if (isSendingSms) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
@@ -346,7 +347,7 @@ fun GuangYaLoginScreen(
                             }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                     enabled = phone.isNotBlank() && smsCode.isNotBlank() && verificationId.isNotBlank() && !isSaving
                 ) {
                     if (isSaving) {

@@ -184,7 +184,7 @@ internal fun GuangYaSaveContent(
                     resolveViewModel.saveToCloud(dirId)
                 },
                 enabled = !saving,
-                modifier = Modifier.fillMaxWidth().height(50.dp)
+                modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp)
             ) {
                 if (saving) {
                     CircularProgressIndicator(

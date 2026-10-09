@@ -18,8 +18,8 @@
 
 package com.yunx.app.ui.screens
 
+import com.yunx.app.ui.components.AppScaffold
 import androidx.compose.material.icons.filled.Cloud
-
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -60,7 +60,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -96,7 +95,7 @@ fun AboutScreen(
     val versionName = UpdateChecker.currentVersion()
     val versionCode = 1
 
-    Scaffold(
+    AppScaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(

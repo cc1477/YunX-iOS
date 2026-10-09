@@ -71,6 +71,9 @@ kotlin {
         jvmTest.dependencies {
             implementation(kotlin("test-junit"))
             implementation(libs.junit)
+            // Render shared screens in JVM layout checks without adding an app target.
+            implementation(compose.desktop.currentOs)
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:${libs.versions.coroutines.get()}")
         }
     }
 }
@@ -82,4 +85,9 @@ sqldelight {
             srcDirs.setFrom("src/commonMain/sqldelight")
         }
     }
+}
+
+tasks.withType<Test>().configureEach {
+    // UI rendering must never open a developer's accounts or download database.
+    systemProperty("user.home", layout.buildDirectory.dir("ui-test-home").get().asFile.absolutePath)
 }

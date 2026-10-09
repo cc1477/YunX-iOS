@@ -20,6 +20,10 @@
 
 package com.yunx.app.ui
 
+import com.yunx.app.ui.components.AppScaffold
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.*
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -31,17 +35,6 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.Campaign
@@ -257,8 +250,13 @@ fun MainScreen(
     val saveableStateHolder = rememberSaveableStateHolder()
 
     val scope = rememberCoroutineScope()
-    // 横屏时使用侧边导航栏（NavigationRail），竖屏保持底部导航条（NavigationBar）
-    val isLandscape = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.let { it.width > it.height }
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val windowSize = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize
+    val width = with(density) { windowSize.width.toDp() }
+    val height = with(density) { windowSize.height.toDp() }
+    val useRail = width >= 840.dp || (width >= 600.dp && width > height)
+    val compactHeight = height < 480.dp
+    val keyboardVisible = WindowInsets.ime.getBottom(density) > 0
     // 首次启动引导页（context 声明后检测）
     var showOnboarding by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -949,81 +947,84 @@ fun MainScreen(
                 )
                 Box(modifier = Modifier.fillMaxSize()) {
                 // 顶部可折叠标题（竖屏 / 横屏共用）：Expressive 的「中号柔性顶栏」
+                val topBarActions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {
+                    // 公告入口：所有 Tab 都显示（收藏只在解析页出现，公告是全局入口），
+                    // 位置在收藏图标左侧 —— 与收藏图标共用"图标当源、长成整页"的容器变换手法。
+                    //
+                    // ★ 角标必须画在 IconButton **外面**（外层再套一个 48dp 的 Box）：
+                    //   material3 的 IconButton 内部带 `.clip(CircleShape)`（那颗 40dp 的圆形
+                    //   水波纹 StateLayer），角标一旦超出这颗圆就被切掉 —— 实测症状是红点被切成
+                    //   水滴形（见用户截图）。外层 Box 与 IconButton 同为 48dp 且不裁剪；
+                    //   Box 仍是同一个 48dp 点击区，而角标自身没有 pointerInput，
+                    //   点在角标上的事件照旧落到 IconButton，不影响点击。
+                    Box(
+                        modifier = Modifier.size(48.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        IconButton(
+                            onClick = {
+                                // 从图标进 = 先看列表（清掉上次「查看详情」直接进详情的请求）
+                                announcementDetailId = null
+                                showAnnouncements = true
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Campaign,
+                                contentDescription = if (unreadAnnouncementCount > 0) {
+                                    "公告（$unreadAnnouncementCount 条未读）"
+                                } else {
+                                    "公告"
+                                },
+                                modifier = Modifier.sharedBounds(
+                                    rememberSharedContentState(OVERLAY_KEY_ANNOUNCEMENTS),
+                                    animatedVisibilityScope = sourceScope
+                                )
+                            )
+                        }
+                        // 未读红点角标：只有主界面显示（公告页自己开着的时候不显示）
+                        if (unreadAnnouncementCount > 0 && overlayRoute == null) {
+                            AnnouncementUnreadBadge(
+                                count = unreadAnnouncementCount,
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = (-6).dp, y = 2.dp)
+                            )
+                        }
+                    }
+                    // 解析页标题右上角：收藏网盘链接入口
+                    if (currentTab == MainTab.Resolve) {
+                        IconButton(
+                            onClick = { showBookmarks = true },
+                            // ★ 收藏页就是从这个图标进来的：图标本身当"源"，用同一个 key 做容器变换，
+                            //   打开时图标长成整页、关闭时收回图标（与设置页那三行的做法完全一致）
+                            modifier = Modifier.sharedBounds(
+                                rememberSharedContentState(OVERLAY_KEY_BOOKMARKS),
+                                animatedVisibilityScope = sourceScope
+                            )
+                        ) {
+                            Icon(Icons.Outlined.Bookmarks, contentDescription = "收藏网盘链接")
+                        }
+                    }
+                }
                 val topBarContent: @Composable () -> Unit = {
-                    // ★ 标题不要写死 style/fontWeight：柔性顶栏内部用 ProvideContentColorTextStyle 注入样式，
-                    //   展开时取 headlineMedium、收起时取 titleLarge，并在这两档之间做字号形变；
-                    //   这两个 token 都解析到 MaterialTheme.typography（即本项目 Type.kt 的 22sp / 18sp SemiBold），
-                    //   自己再传 style 会覆盖注入值，柔性形变直接失效。
-                    MediumTopAppBar(
-                        title = {
-                            Text(text = currentTab.title)
-                        },
-                        actions = {
-                            // 公告入口：所有 Tab 都显示（收藏只在解析页出现，公告是全局入口），
-                            // 位置在收藏图标左侧 —— 与收藏图标共用"图标当源、长成整页"的容器变换手法。
-                            //
-                            // ★ 角标必须画在 IconButton **外面**（外层再套一个 48dp 的 Box）：
-                            //   material3 的 IconButton 内部带 `.clip(CircleShape)`（那颗 40dp 的圆形
-                            //   水波纹 StateLayer），角标一旦超出这颗圆就被切掉 —— 实测症状是红点被切成
-                            //   水滴形（见用户截图）。外层 Box 与 IconButton 同为 48dp 且不裁剪；
-                            //   Box 仍是同一个 48dp 点击区，而角标自身没有 pointerInput，
-                            //   点在角标上的事件照旧落到 IconButton，不影响点击。
-                            Box(
-                                modifier = Modifier.size(48.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                IconButton(
-                                    onClick = {
-                                        // 从图标进 = 先看列表（清掉上次「查看详情」直接进详情的请求）
-                                        announcementDetailId = null
-                                        showAnnouncements = true
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Campaign,
-                                        contentDescription = if (unreadAnnouncementCount > 0) {
-                                            "公告（$unreadAnnouncementCount 条未读）"
-                                        } else {
-                                            "公告"
-                                        },
-                                        modifier = Modifier.sharedBounds(
-                                            rememberSharedContentState(OVERLAY_KEY_ANNOUNCEMENTS),
-                                            animatedVisibilityScope = sourceScope
-                                        )
-                                    )
-                                }
-                                // 未读红点角标：只有主界面显示（公告页自己开着的时候不显示）
-                                if (unreadAnnouncementCount > 0 && overlayRoute == null) {
-                                    AnnouncementUnreadBadge(
-                                        count = unreadAnnouncementCount,
-                                        modifier = Modifier
-                                            .align(Alignment.TopEnd)
-                                            .offset(x = (-6).dp, y = 2.dp)
-                                    )
-                                }
-                            }
-                            // 解析页标题右上角：收藏网盘链接入口
-                            if (currentTab == MainTab.Resolve) {
-                                IconButton(
-                                    onClick = { showBookmarks = true },
-                                    // ★ 收藏页就是从这个图标进来的：图标本身当"源"，用同一个 key 做容器变换，
-                                    //   打开时图标长成整页、关闭时收回图标（与设置页那三行的做法完全一致）
-                                    modifier = Modifier.sharedBounds(
-                                        rememberSharedContentState(OVERLAY_KEY_BOOKMARKS),
-                                        animatedVisibilityScope = sourceScope
-                                    )
-                                ) {
-                                    Icon(Icons.Outlined.Bookmarks, contentDescription = "收藏网盘链接")
-                                }
-                            }
-                        },
-                        scrollBehavior = scrollBehavior,
-                        // 柔性顶栏没有专用的 largeTopAppBarColors，用通用 topAppBarColors（同为 TopAppBarColors 类型）
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            scrolledContainerColor = MaterialTheme.colorScheme.surface
-                        )
+                    val colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        scrolledContainerColor = MaterialTheme.colorScheme.surface
                     )
+                    if (compactHeight || keyboardVisible) {
+                        androidx.compose.material3.TopAppBar(
+                            title = { Text(currentTab.title) },
+                            actions = topBarActions,
+                            colors = colors
+                        )
+                    } else {
+                        MediumTopAppBar(
+                            title = { Text(currentTab.title) },
+                            actions = topBarActions,
+                            scrollBehavior = scrollBehavior,
+                            colors = colors
+                        )
+                    }
                 }
                 // ★ Material 3 Expressive 动效规格：com.yunx.app.ui.theme.AppMotionScheme 是 @Composable 属性，只能在 composable 作用域读取；
                 //   而 AnimatedContent 的 transitionSpec 是普通 lambda（非 @Composable），所以必须在这里先取好、再捕获进 lambda。
@@ -1153,65 +1154,23 @@ fun MainScreen(
                     }
                 }
 
-                if (isLandscape) {
-                    // 横屏：左侧侧边导航栏（NavigationRail）+ 右侧顶栏 & 内容
-                    // ★ 外层 Surface 不只是底色（竖屏由 Scaffold 提供背景，横屏手动布局必须自己铺，
-                    //   否则露出窗口默认白色）：**只有 Surface/Scaffold 才会提供 LocalContentColor**
-                    //   （其默认值是黑色）——横屏没有 Scaffold，少了这层，深色模式下没写 color 的文本
-                    //   （例如 ShareFileRow 里的文件名）就会变成黑字。
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.background
-                    ) {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            Row(modifier = Modifier.fillMaxSize()) {
-                                MainNavigationRail(
-                                    currentTab = currentTab,
-                                    onTabSelected = { currentTab = it }
-                                )
-                                Column(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxSize()
-                                ) {
-                                    topBarContent()
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .fillMaxWidth()
-                                    ) {
-                                        tabContent()
-                                    }
-                                }
-                            }
-                            // 全局 Snackbar（横屏无底部栏，悬浮底部居中）
-                            SnackbarHost(
-                                hostState = snackbarHostState,
-                                modifier = Modifier.align(Alignment.BottomCenter)
-                            )
-                        }
+                Row(
+                    Modifier.fillMaxSize()
+                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+                ) {
+                    if (useRail) {
+                        MainNavigationRail(currentTab) { currentTab = it }
                     }
-                } else {
-                    // 竖屏：Scaffold + 底部导航栏
-                    Scaffold(
-                        modifier = Modifier.fillMaxSize(),
+                    AppScaffold(
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
                         snackbarHost = { SnackbarHost(snackbarHostState) },
-                        topBar = { topBarContent() },
+                        topBar = topBarContent,
                         bottomBar = {
-                            MainBottomBar(
-                                currentTab = currentTab,
-                                onTabSelected = { currentTab = it }
-                            )
+                            if (!useRail && !keyboardVisible) {
+                                MainBottomBar(currentTab) { currentTab = it }
+                            }
                         }
-                    ) { innerPadding ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(innerPadding)
-                        ) {
-                            tabContent()
-                        }
-                    }
+                    ) { tabContent() }
                 }
 
                 }
@@ -1469,43 +1428,25 @@ private fun OverlayPage(modifier: Modifier = Modifier, content: @Composable () -
     }
 }
 
-/**
- * 底部导航条（竖屏）：4 个主 Tab（解析 / 网盘 / 下载 / 设置）。
- * 用 Expressive 的 NavigationBar（选中项带形状指示器 + 弹簧动效，item 由组件内部按 EqualWeight 均分，
- * 不需要自己加 weight）。
- * ★ 高度：Expressive 规范高度是 64dp（NavigationBarTokens.ContainerHeight），比经典 NavigationBar 的
- *   TallContainerHeight（80dp）矮 16dp，产品上要求保持原高度。注意不能直接给 NavigationBar 传
- *   Modifier.heightIn —— 它内部布局按 TopStart 对齐，撑高外层只会让 64dp 的内容贴顶。
- *   故外面套一层同色 Box 并居中：视觉上等价于原来的 80dp 导航栏，item 布局仍是 Expressive。
- *   三键导航机型上系统栏内边距会再叠加（经典版同样如此），因此会比 80dp 更高一点，属正常。
- */
+/** 四个主 Tab；高度和底部安全区由 Material 导航栏处理。 */
 @Composable
 private fun MainBottomBar(
     currentTab: MainTab,
     onTabSelected: (MainTab) -> Unit
 ) {
-    val barColor = MaterialTheme.colorScheme.surfaceContainer
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 80.dp)
-            .background(barColor),
-        contentAlignment = Alignment.Center
-    ) {
-        NavigationBar(containerColor = barColor) {
-            MainTab.values().forEach { tab ->
-                NavigationBarItem(
-                    selected = currentTab == tab,
-                    onClick = { onTabSelected(tab) },
-                    icon = {
-                        Icon(
-                            imageVector = if (currentTab == tab) tab.selectedIcon else tab.unselectedIcon,
-                            contentDescription = tab.title
-                        )
-                    },
-                    label = { Text(tab.title) }
-                )
-            }
+    NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
+        MainTab.values().forEach { tab ->
+            NavigationBarItem(
+                selected = currentTab == tab,
+                onClick = { onTabSelected(tab) },
+                icon = {
+                    Icon(
+                        imageVector = if (currentTab == tab) tab.selectedIcon else tab.unselectedIcon,
+                        contentDescription = null
+                    )
+                },
+                label = { Text(tab.title, maxLines = 1) }
+            )
         }
     }
 }
@@ -1519,7 +1460,7 @@ private fun MainNavigationRail(
     currentTab: MainTab,
     onTabSelected: (MainTab) -> Unit
 ) {
-    NavigationRail {
+    NavigationRail(modifier = Modifier.fillMaxHeight().verticalScroll(rememberScrollState())) {
         MainTab.values().forEach { tab ->
             NavigationRailItem(
                 selected = currentTab == tab,
@@ -1527,11 +1468,11 @@ private fun MainNavigationRail(
                 icon = {
                     Icon(
                         imageVector = if (currentTab == tab) tab.selectedIcon else tab.unselectedIcon,
-                        contentDescription = tab.title
+                        contentDescription = null
                     )
                 },
                 label = { Text(tab.title) },
-                alwaysShowLabel = currentTab == tab
+                alwaysShowLabel = true
             )
         }
     }

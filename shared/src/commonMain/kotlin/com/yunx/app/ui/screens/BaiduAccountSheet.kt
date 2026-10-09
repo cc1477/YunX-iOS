@@ -18,13 +18,13 @@
 
 package com.yunx.app.ui.screens
 
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -58,10 +58,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -100,23 +96,7 @@ fun BaiduAccountSheet(
     val snackbarHostState = rememberGlobalSnackbarHostState()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    // 内容滚动到底后继续上滑的滚动量直接消费，避免传给 Sheet 造成上下抽动
     val scrollState = rememberScrollState()
-    val sheetNestedScroll = remember(scrollState) {
-        object : NestedScrollConnection {
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source: NestedScrollSource
-            ): Offset {
-                val dy = available.y
-                if (dy > 0 && scrollState.value >= scrollState.maxValue) {
-                    return Offset(0f, dy)
-                }
-                return Offset.Zero
-            }
-        }
-    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -126,18 +106,8 @@ fun BaiduAccountSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .then(
-                    if (showFullCookie) {
-                        // 展开 Cookie：占满全屏并允许内部滚动
-                        Modifier
-                            .fillMaxHeight()
-                            .verticalScroll(scrollState)
-                            .nestedScroll(sheetNestedScroll)
-                    } else {
-                        // 未展开：自适应内容高度，不滚动
-                        Modifier
-                    }
-                )
+                .verticalScroll(scrollState)
+
                 .padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 32.dp)
         ) {
             // 用户信息
@@ -157,7 +127,7 @@ fun BaiduAccountSheet(
                     }
                 }
                 Spacer(modifier = Modifier.width(16.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = account.nickname,
                         style = MaterialTheme.typography.titleMedium,
@@ -248,7 +218,7 @@ fun BaiduAccountSheet(
                 onClick = { showLogoutConfirm = true },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
+                    .heightIn(min = 48.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error,
                     contentColor = MaterialTheme.colorScheme.onError

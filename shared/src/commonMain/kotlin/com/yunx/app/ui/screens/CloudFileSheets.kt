@@ -384,6 +384,7 @@ private fun ActionMenu(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
             .padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 32.dp)
     ) {
         // 标题
@@ -498,6 +499,7 @@ internal fun QuarkMoveStep(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
             .padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 32.dp)
     ) {
         StepHeader(title = "移动到", subtitle = subtitle, onBack = onBack)
@@ -583,7 +585,7 @@ internal fun QuarkMoveStep(
             enabled = !operating,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp)
+                .heightIn(min = 50.dp)
         ) {
             if (operating) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
@@ -627,6 +629,7 @@ private fun ShareStep(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
             .padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 32.dp)
     ) {
         StepHeader(title = title, subtitle = subtitle, onBack = onBack)
@@ -745,7 +748,7 @@ private fun ShareStep(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp)
+                .heightIn(min = 50.dp)
         ) {
             if (operating) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
@@ -788,6 +791,7 @@ private fun RenameStep(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
             .padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 32.dp)
     ) {
         StepHeader(title = "重命名", subtitle = file.fname, onBack = onBack)
@@ -813,7 +817,7 @@ private fun RenameStep(
             enabled = !operating && name.isNotBlank(),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp)
+                .heightIn(min = 50.dp)
         ) {
             Text("确认重命名")
         }
@@ -838,6 +842,7 @@ private fun ConfirmDeleteContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
             .padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 32.dp)
     ) {
         Text("删除文件", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
@@ -857,7 +862,7 @@ private fun ConfirmDeleteContent(
             ),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp)
+                .heightIn(min = 50.dp)
         ) {
             Text("删除")
         }
@@ -867,7 +872,7 @@ private fun ConfirmDeleteContent(
             enabled = !operating,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
+                .heightIn(min = 48.dp)
         ) {
             Text("取消")
         }
@@ -1038,7 +1043,7 @@ internal fun SaveStepScaffold(
     onBack: () -> Unit,
     content: @Composable () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
         StepHeader(
             title = title,
             subtitle = subtitle,
@@ -1152,6 +1157,7 @@ private fun BatchMenu(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
             .padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 32.dp)
     ) {
         // 标题

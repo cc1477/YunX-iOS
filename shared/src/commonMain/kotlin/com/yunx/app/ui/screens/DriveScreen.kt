@@ -18,6 +18,8 @@
 
 package com.yunx.app.ui.screens
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -712,7 +714,7 @@ fun DriveScreen(
             onDismissRequest = { showGitHubSheet = false },
             sheetState = sheetState
         ) {
-            Column(modifier = Modifier.padding(bottom = 24.dp)) {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
                 Text(
                     text = "GitHub",
                     style = MaterialTheme.typography.titleMedium,

@@ -18,7 +18,12 @@
 
 package com.yunx.app.ui.login
 
+import com.yunx.app.ui.components.AppScaffold
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -36,17 +41,22 @@ internal fun CookieLoginScreen(
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    Scaffold(topBar = {
+    AppScaffold(topBar = {
         TopAppBar(title = { Text(title) }, navigationIcon = {
-            TextButton(onClick = onBack, enabled = !saving) { Text("返回") }
-        }, actions = {
-            TextButton(onClick = onBack, enabled = !saving) { Text("完成") }
+            IconButton(onClick = onBack, enabled = !saving) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+            }
         })
     }) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
+        BoxWithConstraints(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
+        val formMaxHeight = maxHeight * 0.55f
+        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.fillMaxWidth().heightIn(max = formMaxHeight).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("在网页完成登录后保存，或手动粘贴 $credentialLabel。凭证仅保存在本机。")
             OutlinedTextField(value = credential, onValueChange = { credential = it; error = null },
-                label = { Text(credentialLabel) }, modifier = Modifier.fillMaxWidth(), enabled = !saving)
+                label = { Text(credentialLabel) }, modifier = Modifier.fillMaxWidth(), enabled = !saving,
+                minLines = 1, maxLines = 3, isError = error != null)
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Button(enabled = !saving && credential.isNotBlank(), onClick = {
                 saving = true
@@ -58,12 +68,14 @@ internal fun CookieLoginScreen(
                     catch (e: Exception) { error = "保存失败，请检查网络后重试" }
                     finally { saving = false }
                 }
-            }) { Text(if (saving) "正在校验…" else "保存登录") }
+            }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(if (saving) "正在校验…" else "保存登录") }
+        }
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 CookieLoginWebView(url, loginDomains) { cookies ->
                     if (!saving && credentialLabel == "Cookie") credential = cookies.entries.joinToString("; ") { "${it.key}=${it.value}" }
                 }
             }
+        }
         }
     }
 }

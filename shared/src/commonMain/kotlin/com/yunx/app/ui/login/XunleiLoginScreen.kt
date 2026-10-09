@@ -18,6 +18,7 @@
 
 package com.yunx.app.ui.login
 
+import com.yunx.app.ui.components.AppScaffold
 import com.yunx.app.ui.platform.BackHandler
 import com.yunx.app.ui.SnackbarController
 import com.yunx.app.ui.rememberGlobalSnackbarHostState
@@ -128,7 +129,7 @@ fun XunleiLoginScreen(
         viewModel.resetLoginStep()
     }
 
-    Scaffold(
+    AppScaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
@@ -207,7 +208,7 @@ fun XunleiLoginScreen(
                     )
                     Button(
                         onClick = { viewModel.loginWithSms(username, smsCode, smsStep.smsCreditKey, smsStep.smsToken) },
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                         enabled = smsCode.isNotBlank()
                     ) { Text("验证并登录") }
                     SmsSendButton(
@@ -279,7 +280,7 @@ fun XunleiLoginScreen(
                                     step?.smsCreditKey.orEmpty(), step?.smsToken.orEmpty()
                                 )
                             },
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                             enabled = smsCode.isNotBlank() && !step?.smsCreditKey.isNullOrBlank()
                         ) { Text("验证并登录") }
                     }
@@ -330,7 +331,7 @@ fun XunleiLoginScreen(
                     )
                     Button(
                         onClick = { viewModel.login(username, password) },
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                         enabled = username.isNotBlank() && password.isNotBlank()
                     ) { Text("登录") }
                 }
@@ -341,7 +342,7 @@ fun XunleiLoginScreen(
             // 网页登录入口：扫码 / 验证码都在官网页面里完成，不受本应用的登录接口风控影响
             OutlinedButton(
                 onClick = onWebLogin,
-                modifier = Modifier.fillMaxWidth().height(48.dp)
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) {
                 Icon(
                     Icons.Outlined.Language,
@@ -402,7 +403,7 @@ private fun ColumnScope.SmsSendButton(
     if (!sent) {
         FilledTonalButton(
             onClick = onSend,
-            modifier = Modifier.fillMaxWidth().height(48.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
             enabled = canClick
         ) {
             if (sending) {

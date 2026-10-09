@@ -18,6 +18,8 @@
 
 package com.yunx.app.ui.resolve
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -112,6 +114,7 @@ internal fun ResolveFileActionSheet(
                 ResolveActionStep.MENU -> Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
                         .padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 32.dp)
                 ) {
                     // 顶部：图标 + 文件名 + 类型（与网盘页文件操作弹窗同一组件，观感一致）

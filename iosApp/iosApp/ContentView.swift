@@ -13,6 +13,7 @@ struct ComposeView: UIViewControllerRepresentable {
 struct ContentView: View {
     var body: some View {
         ComposeView()
-            .ignoresSafeArea(.keyboard)
+            // Compose owns safe-area and keyboard insets for the whole window.
+            .ignoresSafeArea(.all)
     }
 }

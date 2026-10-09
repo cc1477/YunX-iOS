@@ -18,6 +18,7 @@
 
 package com.yunx.app.ui.screens
 
+import com.yunx.app.ui.components.AppScaffold
 import com.yunx.app.ui.platform.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -67,7 +68,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -134,7 +134,7 @@ fun BookmarkScreen(
 
     BackHandler { onBack() }
 
-    Scaffold(
+    AppScaffold(
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {

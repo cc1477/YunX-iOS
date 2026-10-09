@@ -18,20 +18,22 @@
 
 package com.yunx.app.data.db
 import app.cash.sqldelight.db.SqlDriver
+import app.cash.sqldelight.TransacterImpl
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import java.io.File
 actual fun createDbDriver(): SqlDriver {
     val directory = File(System.getProperty("user.home"), ".yunx-ios").apply { mkdirs() }
     val driver = JdbcSqliteDriver("jdbc:sqlite:${File(directory, "yunx.db").absolutePath}")
-    val version = driver.executeQuery(null, "PRAGMA user_version", { cursor ->
-        app.cash.sqldelight.db.QueryResult.Value(if (cursor.next().value) cursor.getLong(0) ?: 0L else 0L)
-    }, 0).value
-    check(version <= DbSchema.version) { "Database is newer than this application" }
-    driver.execute(null, "BEGIN IMMEDIATE", 0)
     try {
-        if (version == 0L) DbSchema.create(driver) else if (version < DbSchema.version) DbSchema.migrate(driver, version, DbSchema.version)
-        driver.execute(null, "PRAGMA user_version = ${DbSchema.version}", 0)
-        driver.execute(null, "COMMIT", 0)
-    } catch (error: Throwable) { driver.execute(null, "ROLLBACK", 0); driver.close(); throw error }
+        // SQLDelight pins one JDBC connection for the whole schema transaction.
+        object : TransacterImpl(driver) {}.transaction {
+            val version = driver.executeQuery(null, "PRAGMA user_version", { cursor ->
+                app.cash.sqldelight.db.QueryResult.Value(if (cursor.next().value) cursor.getLong(0) ?: 0L else 0L)
+            }, 0).value
+            check(version <= DbSchema.version) { "Database is newer than this application" }
+            if (version == 0L) DbSchema.create(driver) else if (version < DbSchema.version) DbSchema.migrate(driver, version, DbSchema.version)
+            driver.execute(null, "PRAGMA user_version = ${DbSchema.version}", 0)
+        }
+    } catch (error: Throwable) { driver.close(); throw error }
     return driver
 }
