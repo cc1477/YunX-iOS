@@ -40,7 +40,10 @@ def main():
         simctl("boot", udid)
         simctl("bootstatus", udid, "-b", timeout=240)
         simctl("install", udid, str(app))
-        launch = simctl("launch", udid, "com.yunx.app.ios")
+        diagnostics = screenshot.parent / "startup-diagnostics"
+        diagnostics.mkdir(parents=True, exist_ok=True)
+        launch = simctl("launch", "--stdout=" + str(diagnostics / "stdout.log"),
+                        "--stderr=" + str(diagnostics / "stderr.log"), udid, "com.yunx.app.ios")
         print(launch, flush=True)
         match = re.search(r":\s*(\d+)\s*$", launch)
         if not match:
@@ -58,12 +61,18 @@ def main():
         diagnostics.mkdir(parents=True, exist_ok=True)
         result = subprocess.run(
             ["xcrun", "simctl", "spawn", udid, "log", "show", "--last", "3m", "--style", "compact",
-             "--predicate", 'process == "YunX"'], capture_output=True, text=True, timeout=60
+             "--predicate", 'process == "YunX" OR eventMessage CONTAINS[c] "com.yunx.app.ios" OR process == "ReportCrash"'], capture_output=True, text=True, timeout=60
         )
         (diagnostics / "YunX.log").write_text(result.stdout + result.stderr)
         print(result.stdout[-16000:], flush=True)
-        reports = pathlib.Path.home() / "Library/Logs/DiagnosticReports"
-        for report in reports.glob("YunX*"):
+        for stream in ("stdout.log", "stderr.log"):
+            path = diagnostics / stream
+            if path.exists():
+                print(f"{stream}:\n{path.read_text(errors='replace')[-16000:]}", flush=True)
+        device_data = pathlib.Path.home() / "Library/Developer/CoreSimulator/Devices" / udid / "data"
+        reports = list((pathlib.Path.home() / "Library/Logs/DiagnosticReports").glob("YunX*"))
+        reports += list((device_data / "Library/Logs").rglob("*YunX*"))
+        for report in reports:
             if report.is_file():
                 shutil.copy2(report, diagnostics / report.name)
                 print(f"Saved crash report: {report.name}", flush=True)
