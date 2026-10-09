@@ -68,8 +68,11 @@ object BackgroundSessionBridge {
     }
 }
 
-private object BackgroundSession : NSObject(), NSURLSessionDownloadDelegateProtocol {
-    private const val storageKey = "yunx.background.records"
+// Kotlin/Native cannot allocate an Objective-C subclass as a Kotlin object singleton.
+// Keep one strong delegate instance while using the supported class constructor path.
+private val BackgroundSession by lazy { BackgroundSessionDelegate() }
+private class BackgroundSessionDelegate : NSObject(), NSURLSessionDownloadDelegateProtocol {
+    private val storageKey = "yunx.background.records"
     private val defaults = NSUserDefaults.standardUserDefaults
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val deliveryMutex = Mutex()

@@ -18,9 +18,17 @@ jobs:
           java-version: '17'
 
       - name: Select Xcode
+        id: xcode
         run: |
           sudo xcode-select -s /Applications/Xcode.app || true
           xcodebuild -version
+          xcodebuild -version | awk 'NR == 2 { print "build=" $3 }' >> "$GITHUB_OUTPUT"
+
+      - name: Cache Kotlin Native compiler and dependency caches
+        uses: actions/cache@v4
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-${{ hashFiles('gradle/libs.versions.toml', 'shared/build.gradle.kts') }}
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -39,6 +47,9 @@ jobs:
           -destination 'generic/platform=iOS Simulator'
           -derivedDataPath build
           CODE_SIGNING_ALLOWED=NO build
+
+      - name: Stop Gradle before simulator boot
+        run: ./gradlew --stop
 
       - name: Launch app in an iPhone simulator
         run: >
