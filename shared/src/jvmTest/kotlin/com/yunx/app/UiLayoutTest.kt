@@ -153,7 +153,13 @@ class UiLayoutTest {
                     assertTrue(bytes.size > 100)
                     File("build/ui-layout/$name.png").apply { parentFile.mkdirs(); writeBytes(bytes) }
                 }
-            } finally { scene.close() }
+            } finally {
+                // Detach content while the scene is active so shared-transition observers
+                // release their lazy children before the offscreen scene itself is disposed.
+                scene.setContent {}
+                scene.render(5_000_000_000L).close()
+                scene.close()
+            }
         }
         return rendered
     }
