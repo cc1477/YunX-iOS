@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-def prepare(ipa, site, commit):
+def prepare(ipa, site, commit, download_url=None):
     ipa, site = Path(ipa), Path(site)
     with zipfile.ZipFile(ipa) as archive:
         if archive.testzip() is not None:
@@ -24,7 +24,11 @@ def prepare(ipa, site, commit):
                     size=ipa.stat().st_size, sha256=hashlib.sha256(ipa.read_bytes()).hexdigest(),
                     commit=commit, builtAt=datetime.now(timezone.utc).isoformat(), file='YunX-unsigned.ipa')
     site.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(ipa, site / metadata['file'])
+    if download_url:
+        metadata['url'] = download_url
+        (site / '_redirects').write_text('/YunX-unsigned.ipa ' + download_url + ' 302\n', encoding='utf-8')
+    else:
+        shutil.copy2(ipa, site / metadata['file'])
     (site / 'build-info.json').write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     (site / 'YunX-unsigned.ipa.sha256').write_text(metadata['sha256'] + '  YunX-unsigned.ipa\n', encoding='utf-8')
     print(json.dumps(metadata, ensure_ascii=False))

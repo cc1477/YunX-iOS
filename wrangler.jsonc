@@ -1,0 +1,6 @@
+{
+  "name": "yunx-lcsign-cc1477",
+  "pages_build_output_dir": "site-lcsign",
+  "compatibility_date": "2026-10-09",
+  "r2_buckets": [{ "binding": "IPA_BUCKET", "bucket_name": "pubgtool-ipa" }]
+}

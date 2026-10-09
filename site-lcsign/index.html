@@ -49,6 +49,7 @@
       <p id="build"></p>
       <p id="checksum"></p>
       <a class="fallback" href="YunX-unsigned.ipa.sha256">下载 SHA256 校验文件</a>
+      <a class="fallback" href="https://github.com/cc1477/YunX-iOS">源码与许可</a>
     </details>
   </main>
   <script>
@@ -57,7 +58,7 @@
         const response = await fetch('build-info.json', { cache: 'no-store' });
         if (!response.ok) throw new Error('Metadata unavailable');
         const info = await response.json();
-        const ipaURL = new URL(info.file, location.href);
+        const ipaURL = new URL(info.url || info.file, location.href);
         ipaURL.searchParams.set('v', info.sha256);
         document.getElementById('version').textContent = `v${info.version}（${info.build}） · iOS ${info.minimumOS}+ · ${(info.size / 1048576).toFixed(1)} MB`;
         const link = document.getElementById('import');
