@@ -8,6 +8,12 @@ on:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: yunx-ipa-distribution
+  cancel-in-progress: false
 
 jobs:
   ipa:
@@ -78,3 +84,23 @@ jobs:
       - name: Stop Gradle
         if: always()
         run: ./gradlew --stop
+
+      - name: Prepare LCSign test page
+        run: python3 scripts/prepare_lcsign_site.py iosApp/build-device/YunX-unsigned.ipa site-lcsign "$GITHUB_SHA"
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site-lcsign
+
+  deploy:
+    needs: ipa
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy LCSign test page
+        id: deployment
+        uses: actions/deploy-pages@v4

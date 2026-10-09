@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#f6f7f9">
+  <title>YunX iOS 测试版 · LCSign 导入</title>
+  <style>
+    :root { color-scheme: light dark; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; background: #f6f7f9; color: #17212b; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100dvh; display: grid; place-items: center; padding: 24px; padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left)); }
+    main { width: min(100%, 420px); padding: 30px 24px; border: 1px solid #dde4ea; border-radius: 18px; background: #fff; }
+    h1 { margin: 0 0 8px; font-size: 26px; line-height: 1.25; }
+    p { margin: 0; color: #465767; line-height: 1.65; overflow-wrap: anywhere; }
+    .version { margin-bottom: 24px; font-size: 14px; }
+    .button { display: block; margin: 24px 0 14px; padding: 15px 18px; min-height: 52px; border-radius: 12px; background: #176b50; color: #fff; font-size: 17px; font-weight: 650; text-align: center; text-decoration: none; touch-action: manipulation; }
+    .button:hover { background: #11543e; }
+    .button:active { background: #0d4332; }
+    a:focus-visible { outline: 3px solid #c17617; outline-offset: 3px; }
+    .fallback { display: block; padding: 10px 0; min-height: 44px; color: #176b50; text-align: center; text-underline-offset: 3px; }
+    .steps { margin-top: 22px; padding-top: 18px; border-top: 1px solid #e2e7eb; font-size: 14px; }
+    details { margin-top: 18px; font-size: 13px; color: #465767; }
+    summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
+    #checksum { font-family: ui-monospace, monospace; font-size: 12px; }
+    @media (prefers-color-scheme: dark) {
+      :root { background: #10171c; color: #f1f5f8; }
+      main { background: #1b252c; border-color: #34434d; }
+      p, details { color: #c4d0d8; }
+      .button { background: #21845f; }
+      .button:hover { background: #27966d; }
+      .button:active { background: #176b50; }
+      .fallback { color: #88ddba; }
+      .steps { border-color: #34434d; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>YunX iOS 测试版</h1>
+    <p class="version" id="version" aria-live="polite">正在读取版本信息…</p>
+    <p>本次更新优化安全区、键盘避让、横屏和大字号布局。此包为未签名 Debug 测试版，导入 LCSign 后，选择你的证书签名并安装。</p>
+    <a class="button" id="import" hidden>导入到 LCSign</a>
+    <a class="fallback" id="download" href="YunX-unsigned.ipa" download="YunX-unsigned.ipa">手动下载 IPA</a>
+    <p class="steps">请在 iPhone 上打开此页，并先安装 LCSign。如果点击导入后没有打开应用，可手动下载 IPA，再到 LCSign 导入文件。最低支持 iOS 15。</p>
+    <details>
+      <summary>查看构建与校验信息</summary>
+      <p id="build"></p>
+      <p id="checksum"></p>
+      <a class="fallback" href="YunX-unsigned.ipa.sha256">下载 SHA256 校验文件</a>
+    </details>
+  </main>
+  <script>
+    async function loadBuild() {
+      try {
+        const response = await fetch('build-info.json', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Metadata unavailable');
+        const info = await response.json();
+        const ipaURL = new URL(info.file, location.href);
+        ipaURL.searchParams.set('v', info.sha256);
+        document.getElementById('version').textContent = `v${info.version}（${info.build}） · iOS ${info.minimumOS}+ · ${(info.size / 1048576).toFixed(1)} MB`;
+        const link = document.getElementById('import');
+        link.href = 'loadcontroller://import?url=' + encodeURIComponent(ipaURL.href) + '&name=' + encodeURIComponent(info.file);
+        link.hidden = false;
+        document.getElementById('download').href = ipaURL.href;
+        document.getElementById('build').textContent = `构建时间：${new Date(info.builtAt).toLocaleString()} · 提交：${info.commit.slice(0, 7)}`;
+        document.getElementById('checksum').textContent = 'SHA256：' + info.sha256;
+      } catch (error) {
+        document.getElementById('version').textContent = '版本信息暂时不可用，请刷新重试或手动下载。';
+      }
+    }
+    loadBuild();
+  </script>
+</body>
+</html>
