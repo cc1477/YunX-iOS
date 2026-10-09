@@ -1,37 +1,32 @@
-# UI 适配修复 · 2026-10-09
+# iOS UI 适配与云端验证 · 2026-10-10
 
-本地分支：`codex/ui-adaptation`。
+代码提交：`aba36f839dd4acb2453357e15c1e01f7be0073ef`，版本 **0.1.1 (4)**。分支 `codex/ui-adaptation` 与 main 已同步。
 
-完整页面共用 `AppScaffold`：统一应用并消费安全区、为键盘留出空间，内容宽度上限为 840dp。SwiftUI 宿主把窗口交给 Compose 管理。主导航在宽屏使用侧栏，短屏使用紧凑顶栏；键盘打开时收起底部导航。安全区处理参考 [JetBrains 的窗口布局说明](https://youtrack.jetbrains.com/projects/KMT/issues/KMT-1505/KMP-Wizard-Compose-for-iOS-should-ignore-safe-area-completely) 与 [Compose Insets 消费规则](https://developer.android.com/develop/ui/compose/system/insets-ui#inset-consumption)。
+保留 FontFamily.Default 使用 iOS 系统字体；调整正文、标题、标签的字号与行高，取消额外字距。Compose 1.8.2 的 UIKit density 已将系统 preferredContentSizeCategory 映射到 fontScale；不添加第二次字号乘数。SwiftUI 宿主观察 sizeCategory 并更新 Compose 子视图布局，使运行中修改 Dynamic Type 也触发内建 density 更新。此版本的辅助字号映射最大为 1.8，并非 UIKit 各文本样式的非线性曲线。
 
-欢迎页内容可滚动，说明勾选和开始按钮固定在底部。账号、文件操作、移动与转存弹层支持滚动。操作按钮使用最小高度，快捷方式列数按可用宽度和字号调整；备份和批量操作按钮可换行。网页登录表单可以独立滚动，保留网页操作区域。说明页采用统一顶栏和滚动布局，颜色选择对话框支持滚动。
+删除首次启动引导页及关于页引导预览入口。首次启动直接进入解析页；旧 onboarding 偏好不影响启动路径。关于页读取原生实际版本与构建号。
 
-本地渲染还修复了 JVM 数据库初始化的事务连接问题；测试数据库位于 `shared/build/ui-test-home`。桌面渲染依赖仅加入 JVM 测试。
+共用 AppScaffold 应用并消费安全区，为键盘留出空间，内容宽度上限 840dp。主导航按可用宽度和高度使用底栏、侧栏或紧凑顶栏；键盘打开时隐藏底栏。弹层可滚动，按钮可换行。支持 iPhone 横屏。设置页将平台线程设置折叠，下载目录说明改为“文件”App 中的路径；原生启用 Documents 文件共享。
 
-## 验证
+## 实际验证
 
-执行 `:shared:jvmTest`：**8 项测试通过**，包含原有 3 项业务回归和 5 项 UI 检查。
+在 GitHub Actions macOS runner 执行 `./gradlew :shared:jvmTest`：**8 项通过，0 失败**（3 项业务回归、5 项 UI 检查）。最终提交新生成 **79 张实际 Compose PNG**，未复用之前的 61 张结果。
 
-- 验证安全区只应用一次、平板内容居中且不超过 840dp。
-- 实际点击欢迎页：未同意时无法进入，同意后在手机竖屏与两倍字号横屏可以进入。
-- 用真实 Compose JVM 渲染欢迎页、登录页、说明页、四个主 Tab、账号弹层、转存目录弹层，生成 **61 张 PNG**。
-- 覆盖 320×568、375×667、667×375、834×1194、1194×834；主要页面包含浅色、深色和 1× / 2× 字号场景。
-- 主导航包含动画时长缩放为 0 的渲染检查。检查了小屏、横屏、大字号、深色模式和弹层的代表截图。
+检查默认启动路径在旧引导偏好 true/false 下完全一致、安全区只应用一次、平板内容宽度、登录与说明页、四个主 Tab、弹层和动画时长缩放 0。覆盖窄屏、横屏、大字号、深浅色。图片与 XML/HTML 报告在 [本次验证运行](https://github.com/cc1477/YunX-iOS/actions/runs/37960349967) 的 YunX-ui-validation 附件。
 
-截图位于 `shared/build/ui-layout`，测试报告位于 `shared/build/reports/tests/jvmTest/index.html`。本机已准备 `.tools/check-ui.ps1`，可在 PowerShell 中运行：
+同一运行已完成 Xcode iOS 模拟器编译和安装启动，生成 4 张原生截图：标准字号、运行中切换最大辅助字号、最大辅助字号冷启动、最大辅助字号深色。原生截图包含网络返回的上游版本说明弹层；不会将该截图描述为首页。完整截图与模拟器 App 位于 YunX-simulator 附件。
 
-```powershell
-& .\.tools\check-ui.ps1
-```
+[真机打包运行](https://github.com/cc1477/YunX-iOS/actions/runs/37960350134) 已编译并验证 arm64 App、共享框架与未签名 IPA，GitHub Pages 部署成功。IPA 不包含 provisioning profile，需用户使用自己的签名工具签名安装。
 
-标准 JDK 17 环境也可以使用：
+没有实机验证 VoiceOver、WKWebView 输入、键盘弹出/收起和 iPad 分屏；相关共用布局已有渲染覆盖，不能视为这些原生交互全部验证。
 
-```text
-./gradlew :shared:jvmTest --console=plain
-```
+## 分发
 
-## 设备验证范围
+- [Cloudflare LCSign 分发页](https://yunx-lcsign-cc1477.pages.dev/)
+- [GitHub Pages 备用](https://cc1477.github.io/YunX-iOS/)
+- IPA：28,252,277 bytes
+- SHA-256：`42124c0b4a7c5c8c9449b1f53adfb164481c25f4b877f6c0815d1a44a46f0eb9`
+- 源提交：`aba36f839dd4acb2453357e15c1e01f7be0073ef`
+- 构建时间：2026-10-09T17:00:15.928690+00:00
 
-以上图片来自共用 Compose 界面的 JVM 渲染。登录图片中的网页区域是 JVM 平台的手动凭证入口。Windows 无法编译或运行 iOS App，因此 Swift 宿主改动、真实刘海与 Home Indicator、WKWebView、键盘弹出/收起、iOS 最大辅助字号、VoiceOver 和 iPad 分屏仍需要在 macOS 模拟器或真机检查。当前没有生成更新的 IPA。
-
-本次技能数据库命中了安全区指导；字体缩放的 Compose 专项检索未命中，相关调整采用技能通用规则，并通过实际渲染检查。
+Cloudflare 发布继续使用 gametool 现有 Actions secrets，凭据未取出。其现有 deploy-yunx.yml 更新了可复用工作流固定提交和校验摘要，并添加仅该文件变更时触发的 main push 入口；没有为技能迁移新增工作流。
