@@ -98,7 +98,6 @@ import com.yunx.app.data.network.UCApi
 import com.yunx.app.data.network.XunleiApi
 import com.yunx.app.data.prefs.SettingsRepository
 import com.yunx.app.data.security.CredentialStore
-import com.yunx.app.data.update.UpdateChecker
 import com.yunx.app.data.repository.BaiduAccountRepository
 import com.yunx.app.data.repository.BaiduResolveRepository
 import com.yunx.app.data.repository.C139AccountRepository
@@ -144,7 +143,6 @@ import com.yunx.app.ui.screens.ResolveScreen
 import com.yunx.app.ui.screens.SettingsScreen
 import com.yunx.app.ui.screens.SupportScreen
 import com.yunx.app.ui.screens.ThemeScreen
-import com.yunx.app.ui.screens.UpdateSheet
 import com.yunx.app.ui.viewmodel.AnnouncementViewModel
 import com.yunx.app.ui.viewmodel.BaiduAccountViewModel
 import com.yunx.app.ui.viewmodel.BaiduCloudViewModel
@@ -256,67 +254,12 @@ fun MainScreen(
     val useRail = width >= 840.dp || (width >= 600.dp && width > height)
     val compactHeight = height < 480.dp
     val keyboardVisible = WindowInsets.ime.getBottom(density) > 0
-    // 更新检测：请求 GitHub 最新 Release（仓库无 Release / 网络失败则不提示，失败原因看 YunX-Update 日志）
-    var showUpdateSheet by remember { mutableStateOf(false) }
-    // 最近一次成功拿到的真实 Release：既用于「发现新版本」弹窗，也供设置页的开发调试入口直接预览
-    var latestRelease by remember { mutableStateOf<UpdateChecker.Release?>(null) }
-    LaunchedEffect(Unit) {
-        when (val result = UpdateChecker.fetchLatestRelease(ThemeController.acceptPrereleaseUpdate)) {
-            is UpdateChecker.CheckResult.Failure -> Unit // 启动检查不打扰用户，失败原因已由 UpdateChecker 打 E 级日志
-            is UpdateChecker.CheckResult.Success -> {
-                val release = result.release
-                latestRelease = release
-                val current = UpdateChecker.currentVersion()
-                val prefs = com.yunx.app.ui.platform.UiPreferences()
-                val ignored = prefs.getString("ignored_version", "")
-                if (UpdateChecker.compareVersions(release.tagName, current) > 0 &&
-                    release.tagName != ignored
-                ) {
-                    showUpdateSheet = true
-                }
-            }
-        }
-    }
-
-    /**
-     * 手动检查更新：与启动检查共用同一份状态和同一个 [UpdateSheet]（设置页不再自己实现一份弹窗）。
-     * 失败时把 [UpdateChecker.CheckResult.Failure.reason] 直接显示出来，方便区分断网 / 限流 / 仓库无 Release。
-     */
-    val checkForUpdate: () -> Unit = {
-        scope.launch {
-            SnackbarController.show("正在检查更新…")
-            when (val result = UpdateChecker.fetchLatestRelease(ThemeController.acceptPrereleaseUpdate)) {
-                is UpdateChecker.CheckResult.Failure -> SnackbarController.show("检查更新失败：${result.reason}")
-                is UpdateChecker.CheckResult.Success -> {
-                    val release = result.release
-                    latestRelease = release
-                    if (UpdateChecker.compareVersions(release.tagName, UpdateChecker.currentVersion()) > 0) {
-                        showUpdateSheet = true
-                    } else {
-                        SnackbarController.show("已是最新版本")
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * 开发调试入口「显示检查更新弹窗」：只用已经拿到的真实 Release 打开弹窗，
-     * 不发网络请求、也不比较版本号（想预览就先在设置页联网检查一次更新）。
-     */
-    val previewUpdateSheet: () -> Unit = {
-        if (latestRelease != null) {
-            showUpdateSheet = true
-        } else {
-            SnackbarController.show("暂未获取到 Release 数据，请先联网检查一次更新")
-        }
-    }
     /**
      * 应用内公告：顶栏红点角标 + 启动弹窗。
      *
      * 启动检查（[AnnouncementViewModel.checkStartup]）整个会话只跑一次：一次列表请求同时决定
      * 「角标数字」与「弹窗展示哪一条」—— 有未读的置顶公告就弹它，否则弹最新的一条未读，全读完则不弹。
-     * 失败静默（与上面的更新检查同一口径），用户点进公告页时会再拉一次并把错误显示出来。
+     * 启动请求失败时保持静默，用户点进公告页时会再拉一次并把错误显示出来。
      */
     val announcementReadStore = remember { AnnouncementReadStore() }
     val announcementViewModel: AnnouncementViewModel = viewModel(
@@ -1119,10 +1062,7 @@ fun MainScreen(
                                     onAboutClick = { showAbout = true },
                                     onSupportClick = { showSupport = true },
                                     onGopeedClick = { showGopeed = true },
-                                    backupManager = backupManager,
-                                    // 手动检查更新与开发调试预览都复用 MainScreen 的更新弹窗状态
-                                    onCheckUpdate = checkForUpdate,
-                                    onPreviewUpdateSheet = previewUpdateSheet
+                                    backupManager = backupManager
                                 )
                             }
                         }
@@ -1203,24 +1143,6 @@ fun MainScreen(
                     }
                 }
             }
-        }
-    }
-
-    // 发现新版本（底部弹窗，覆盖在主页之上）：全应用唯一的更新弹窗实现，启动检查 / 手动检查 / 开发调试预览共用
-    latestRelease?.let { release ->
-        if (showUpdateSheet) {
-            UpdateSheet(
-                currentVersion = UpdateChecker.currentVersion(),
-                release = release,
-                onLater = { showUpdateSheet = false },
-                onIgnore = {
-                    com.yunx.app.ui.platform.UiPreferences()
-                        .edit()
-                        .putString("ignored_version", release.tagName)
-                        .apply()
-                    showUpdateSheet = false
-                }
-            )
         }
     }
 

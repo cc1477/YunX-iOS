@@ -36,14 +36,17 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 
 
 /**
- * 应用对外的联系方式与仓库地址（引导页 / 设置页 / 关于页共用）。
+ * 应用对外的联系方式、仓库地址与 iOS 分发入口。
  *
  * ★ 为什么要集中放：同一个 QQ 群号、同一个仓库地址会在多个界面出现，
  *   就地写死的话改一处漏一处（换群号时最容易漏），所以对外入口一律从这里取常量。
  * ★ 新增对外入口（比如 Telegram 群、邮件反馈）时，先往这里加常量，再到界面里引用。
  */
 object AppLinks {
-    /** QQ 交流群群号（引导页首页、设置页「关于」组都有入口） */
+    /** iOS 测试版本与签名导入入口。 */
+    const val IOS_DISTRIBUTION = "https://yunx-lcsign-cc1477.pages.dev/"
+
+    /** QQ 交流群群号（设置页与关于页共用）。 */
     const val QQ_GROUP = "635207650"
 
     /** GitHub 仓库完整地址（点击用系统浏览器打开） */

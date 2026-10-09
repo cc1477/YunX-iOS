@@ -29,6 +29,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.coroutines.EmptyCoroutineContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.swing.Swing
 
 /** Uses the actual shared Compose layout engine, with no browser or mock HTML. */
 class UiLayoutTest {
@@ -139,7 +141,8 @@ class UiLayoutTest {
             val motionContext = if (reducedMotion) object : MotionDurationScale {
                 override val scaleFactor = 0f
             } else EmptyCoroutineContext
-            val scene = ImageComposeScene(width, height, Density(1f, scale), coroutineContext = motionContext) {
+            // Rendering and composition coroutines share the UI thread, including disposal.
+            val scene = ImageComposeScene(width, height, Density(1f, scale), coroutineContext = Dispatchers.Swing.immediate + motionContext) {
                 ComposeEmptyActivityTheme(darkTheme = dark) { content() }
             }
             try {
@@ -154,10 +157,6 @@ class UiLayoutTest {
                     File("build/ui-layout/$name.png").apply { parentFile.mkdirs(); writeBytes(bytes) }
                 }
             } finally {
-                // Detach content while the scene is active so shared-transition observers
-                // release their lazy children before the offscreen scene itself is disposed.
-                scene.setContent {}
-                scene.render(5_000_000_000L).close()
                 scene.close()
             }
         }

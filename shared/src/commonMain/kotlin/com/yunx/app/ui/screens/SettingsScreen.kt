@@ -42,8 +42,7 @@ fun SettingsScreen(scrollBehavior: TopAppBarScrollBehavior,
     themeRowModifier: Modifier = Modifier, aboutRowModifier: Modifier = Modifier,
     supportRowModifier: Modifier = Modifier, engineRowModifier: Modifier = Modifier,
     onThemeClick: () -> Unit, onAboutClick: () -> Unit, onSupportClick: () -> Unit,
-    onGopeedClick: () -> Unit, backupManager: AuthBackupManager,
-    onCheckUpdate: () -> Unit, onPreviewUpdateSheet: () -> Unit, modifier: Modifier = Modifier
+    onGopeedClick: () -> Unit, backupManager: AuthBackupManager, modifier: Modifier = Modifier
 ) {
     val settings = remember { SettingsRepository() }
     val scope = rememberCoroutineScope()
@@ -77,13 +76,12 @@ fun SettingsScreen(scrollBehavior: TopAppBarScrollBehavior,
         PreferenceSwitch("完整文件 SHA-256", settings.fullFileSha256) { settings.fullFileSha256 = it }
         PreferenceSwitch("夸克免转存下载", settings.quarkNoSaveDownload) { settings.quarkNoSaveDownload = it }
         Button(onClick = onGopeedClick, modifier = engineRowModifier) { Text("下载引擎") }
-        Text("iOS 前台下载可用，后台长时间下载能力将在后续平台阶段接入。")
+        Text("普通直链支持系统后台下载；需要登录的网盘和视频分片任务请保持应用在前台。")
         Button(onClick = { scope.launch { result = if (requestPermission(Permission.NOTIFICATIONS)) "通知权限已允许" else "未允许通知，请在系统设置中开启" } }) { Text("申请通知权限") }
         Text("外观与行为", style = MaterialTheme.typography.titleLarge)
         Button(onClick = onThemeClick, modifier = themeRowModifier) { Text("主题与外观") }
         PreferenceSwitch("文件名多行显示", ThemeController.fileNameMultiLine) { ThemeController.setFileNameMultiLine(it) }
         PreferenceSwitch("识别剪贴板分享链接", ThemeController.clipboardSuggestEnabled) { ThemeController.setClipboardSuggestEnabled(it) }
-        PreferenceSwitch("接受预发布更新", ThemeController.acceptPrereleaseUpdate) { ThemeController.setAcceptPrereleaseUpdate(it) }
         Text("网络", style = MaterialTheme.typography.titleLarge)
         PreferenceText("GitHub 镜像前缀", settings.githubMirrorPrefix.orEmpty()) { settings.githubMirrorPrefix = it.takeIf(String::isNotBlank) }
         PreferenceSwitch("启用代理", settings.proxyEnabled) { settings.proxyEnabled = it; com.yunx.app.data.network.HttpClients.setProxy(if (it) settings.proxyHost else null, settings.proxyPort) }
@@ -119,7 +117,7 @@ fun SettingsScreen(scrollBehavior: TopAppBarScrollBehavior,
         }
         result.takeIf(String::isNotBlank)?.let { Text(it) }
         Text("关于", style = MaterialTheme.typography.titleLarge)
-        Button(onClick = onCheckUpdate) { Text("检查更新") }
+        Button(onClick = { openUrl(AppLinks.IOS_DISTRIBUTION) }) { Text("获取最新 iOS 版本") }
         Button(onClick = onAboutClick, modifier = aboutRowModifier) { Text("关于云析") }
         Button(onClick = onSupportClick, modifier = supportRowModifier) { Text("支持开发") }
         TextButton(onClick = { openUrl(AppLinks.GITHUB_REPO) }) { Text(AppLinks.GITHUB_REPO_DISPLAY) }
@@ -131,7 +129,6 @@ fun SettingsScreen(scrollBehavior: TopAppBarScrollBehavior,
                 com.yunx.app.data.download.DownloadDebugLog.setEnabled(it)
             }
             PreferenceSwitch("诊断日志", settings.diagnosticMode) { settings.diagnosticMode = it; com.yunx.app.util.DiagnosticLog.setEnabled(it) }
-            TextButton(onClick = onPreviewUpdateSheet) { Text("预览更新弹窗") }
         }
     }
 }
