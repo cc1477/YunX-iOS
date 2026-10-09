@@ -2,7 +2,7 @@
 
 返回 [README](README.md)；移植历史与未验证项见 [PORTING-NOTES](PORTING-NOTES.md)。
 
-本文按当前工程文件静态核对编写。**Stage 5 没有执行构建、编译、Gradle、Xcode 或运行测试；以下命令供 Mac 用户执行，不表示已验证通过。** 2026-10-09 后续在 Linux / JDK 17 上完成 JVM 编译与 3 项共用回归测试，全部通过；该结果不能替代 iOS 验证。
+2026-10-09 已通过 Linux/JDK 17 的 JVM 编译与 3 项共用回归测试，并在 GitHub macos-15 CI 完成 Debug arm64 模拟器的 Kotlin/Native framework、Swift 与应用构建。真机、Release 和签名未验证；[CI 37901341331](https://github.com/cc1477/YunX-iOS/actions/runs/37901341331) 已通过模拟器启动检查，截图确认显示欢迎界面。Stage 5 最初仅静态检查，本文现已补充后续真实构建结果。
 
 ## 先了解平台限制
 
@@ -27,7 +27,7 @@
 | Apple 账号 | 模拟器可关闭签名；真机需 Apple Developer 账号及可用 Team/开发签名，个人测试可使用 Xcode Personal Team，分发权限另行配置 |
 | 设备 | 工程部署目标 iOS 15.0，iPhone、竖屏，Swift 5；目标设备还需被所选 Xcode 支持 |
 
-macOS/Xcode 对应关系见 [Apple 官方支持矩阵](https://developer.apple.com/xcode/system-requirements)。工程 CI 文件选择 `macos-15`，但存在工作流不代表已运行成功。工程固定 Kotlin 2.1.0、CMP 1.8.2、SQLDelight 2.0.2、Ktor 3.1.3，版本来源为 `gradle/libs.versions.toml`。
+macOS/Xcode 对应关系见 [Apple 官方支持矩阵](https://developer.apple.com/xcode/system-requirements)。工程 CI 文件选择 `macos-15`，Debug 模拟器构建已实际通过。工程固定 Kotlin 2.1.0、CMP 1.8.2、SQLDelight 2.0.2、Ktor 3.1.3，版本来源为 `gradle/libs.versions.toml`。
 
 ## 首次准备
 
@@ -72,7 +72,7 @@ macOS/Xcode 对应关系见 [Apple 官方支持矩阵](https://developer.apple.c
 ./gradlew :shared:linkReleaseFrameworkIosArm64
 ```
 
-[Kotlin 官方文档](https://kotlinlang.org/docs/apple-framework.html)说明 framework link task 与 `build/bin/<target>/debugFramework` 产物路径规则。这里的目录是构建预期输出，当前未生成也未检查产物。首次构建还会下载依赖及 Kotlin/Native 工具链；不需要 Android SDK。
+[Kotlin 官方文档](https://kotlinlang.org/docs/apple-framework.html)说明 framework link task 与 `build/bin/<target>/debugFramework` 产物路径规则。Debug 模拟器 framework 已在 CI 生成并由 Xcode 链接、嵌入；其他配置仍为预期输出。首次构建还会下载依赖及 Kotlin/Native 工具链；不需要 Android SDK。
 
 ## Xcode 工程、scheme 和配置切换
 
@@ -139,13 +139,19 @@ xcrun simctl install "$SIMULATOR_UDID" iosApp/build/Build/Products/Debug-iphones
 xcrun simctl launch "$SIMULATOR_UDID" com.yunx.app.ios
 ```
 
-`iosApp/build/...` 是上述 `-derivedDataPath` 与配置指定的预期产物，不是已有文件。若改了 bundle ID，launch 最后一个参数用自己的 ID；若改用 Release，构建配置改为 Release，安装路径改为 `Release-iphonesimulator/YunX.app`。仅需构建、不安装时也可使用工程 CI 相同的 generic destination：
+`iosApp/build/...` 是上述 `-derivedDataPath` 与配置指定的输出；CI 已实际生成 Debug 模拟器应用。若改了 bundle ID，launch 最后一个参数用自己的 ID；若改用 Release，构建配置改为 Release，安装路径改为 `Release-iphonesimulator/YunX.app`。仅需构建、不安装时也可使用工程 CI 相同的 generic destination：
 
 ```sh
 xcodebuild -project iosApp/iosApp.xcodeproj -scheme YunX \
   -configuration Debug -sdk iphonesimulator \
   -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
+
+## 下载 CI 模拟器应用
+
+在通过的 Actions run 中下载 `YunX-simulator` artifact，解压外层下载包，再解压其中的 `YunX-simulator.zip`，获得 `YunX.app`。该包仅适用于 Apple Silicon arm64 模拟器，不含真机签名，不能直接安装到 iPhone。用上面的 `simctl install` 命令安装解压后的应用。压缩使用 `ditto` 保留 framework 内容；artifact 保留 7 天。
+
+CI 使用一次性 iPhone 模拟器，检查启动后的应用进程并保存截图；失败时上传 stdout/stderr、系统日志及 LLDB 崩溃栈。启动检查没有操作欢迎页、登录或下载，不能代替功能测试。
 
 ## 常见问题与诊断
 
@@ -163,7 +169,11 @@ Intel/x86_64 模拟器会被脚本主动拒绝；当前工程没有可供其使�
 ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 --stacktrace --info
 ```
 
-若失败发生在 Swift 编译阶段，则展开 Swift Sources 日志，对照生成的 `shared.framework/Headers/shared.h` 检查 `MainViewControllerKt`、`IosLifecycleBridge.shared`、`BackgroundSessionBridge.shared` 和闭包映射。Native WebKit/Security/CoreFoundation/zlib API、SQLDelight 生成代码及依赖版本兼容均未在本阶段编译验证，出现真实错误需据日志修复源码，本文不把它们归为已通过项。
+若失败发生在 Swift 编译阶段，则展开 Swift Sources 日志，对照生成的 `shared.framework/Headers/shared.h` 检查 `MainViewControllerKt`、`IosLifecycleBridge.shared`、`BackgroundSessionBridge.shared` 和闭包映射。Native WebKit/Security/CoreFoundation/zlib API、SQLDelight 生成代码及 Swift framework 导入已通过 Debug 模拟器编译；这不等同于各功能运行验证。
+
+### Compose 启动时退出
+
+CMP 1.8.2 默认严格检查 Info.plist 的 `CADisableMinimumFrameDurationOnPhone` 必须为 true，缺少此项会抛出错误并终止应用。工程已补齐此配置。另修复原生日志 `NSLog` 的格式：Kotlin String 的 C 可变参数为 UTF-8 指针，必须用 `%s`，用 `%@` 会将字符数据当成 Objective-C 对象并触发 SIGSEGV。LLDB 已确认调用链为 `UpdateChecker.parseRelease → PlatformLog.emit → NSLog`。CI 的 `smoke-simulator.py` 保留 stdout/stderr、应用及相关系统日志、可用崩溃报告，失败诊断作为 Actions artifact 上传。
 
 ### wrapper / JDK / Xcode 工具找不到
 
@@ -182,7 +192,7 @@ maven { url = uri("https://maven.aliyun.com/repository/public") }
 maven { url = uri("https://maven.aliyun.com/repository/public") }
 ```
 
-镜像地址依据 [阿里云依赖下载说明](https://help.aliyun.com/en/document_detail/436767.html)。这是可选编辑示例，当前工程未添加，也未验证镜像覆盖率或速度；遇到缺失/过期制品要回查原仓库。这里的镜像仅处理插件/Maven 制品，不覆盖 wrapper 的 Gradle zip、Kotlin/Native 工具链或 Xcode runtime。wrapper 下载超时时可在现有 `gradle/wrapper/gradle-wrapper.properties` 将 `networkTimeout=10000` 调高，例如 `networkTimeout=60000`，仍保留 8.10.2 分发版本。
+镜像地址依据 [阿里云依赖下载说明](https://help.aliyun.com/en/document_detail/436767.html)。这是可选编辑示例，当前工程未添加，也未验证镜像覆盖率或速度；遇到缺失/过期制品要回查原仓库。这里的镜像仅处理插件/Maven 制品，不覆盖 wrapper 的 Gradle zip、Kotlin/Native 工具链或 Xcode runtime。wrapper 下载超时时可在现有 `gradle/wrapper/gradle-wrapper.properties` 进一步调高现有 `networkTimeout=60000`，仍保留 8.10.2 分发版本。
 
 ### 登录、后台任务与文件导出“构建成功却不能用”
 

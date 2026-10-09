@@ -1,8 +1,14 @@
-**构建链路修复（2026-10-09）：** 最新 CI 在 Homebrew Gradle 9.7.1 配置 Kotlin 插件时失败（`DefaultArtifactPublicationSet` 缺失），尚未执行 iOS 编译。现提交 Gradle 8.10.2 官方 wrapper jar 和脚本，校验分发包 SHA-256，CI 直接运行 wrapper；Info.plist bundle ID 改为引用 Xcode 设置。下方各阶段记录保留历史状态。
+**启动回归通过（2026-10-09）：** [CI 37901341331](https://github.com/cc1477/YunX-iOS/actions/runs/37901341331)，代码 commit `974b1ab`，在 macOS 15.7.9 / Xcode 16.4 / JDK 17 / Gradle 8.10.2 上通过共用 JVM 测试、Native framework、Swift、Debug arm64 模拟器应用构建及启动检查。应用启动后持续运行至少 15 秒，截图实际显示“欢迎使用云析”界面；没有操作欢迎页、账户登录或下载。产物：[YunX-simulator](https://github.com/cc1477/YunX-iOS/actions/runs/37901341331/artifacts/11603375521)，含应用压缩包和截图，保留至 2026-10-16。
+
+启动缺陷有两项：CMP 严格检查要求的 Info.plist 帧率配置缺失；日志函数把 Kotlin C 字符串交给 `%@`，导致 SIGSEGV。旧代码 LLDB 崩溃栈已确认 `UpdateChecker.parseRelease → PlatformLog.emit → NSLog → _NSDescriptionWithStringProxyFunc`；改用 `%s` 后普通启动检查通过。CI 保留失败抓栈诊断、Native 缓存与正确封装动态 framework 的应用产物。真机、签名、Release、登录及后台/前台下载仍待验证。下面保留各轮历史记录。
+
+**macOS 构建验证（2026-10-09）：** 用户批准后已推送并运行 GitHub CI。Debug arm64 模拟器已实际通过 Kotlin/Native framework 链接、Swift 编译及应用构建；证据：[CI 37897035917](https://github.com/cc1477/YunX-iOS/actions/runs/37897035917)。该轮启动检查失败，未据此宣称运行通过。修复 Native API 类型、NSDate 构造、Okio use、JVM 残留调用；将继承 NSObject 的单例 object 改为常规 delegate class 的惰性实例，消除 Kotlin/Native 分配断言；补齐 CMP 1.8.2 要求的 Info.plist 帧率配置。旧配置诊断已确认 `IllegalStateException` 来自缺失 `CADisableMinimumFrameDurationOnPhone`；补齐后仍有 SIGSEGV，正在通过 LLDB 抓栈定位，不能宣称启动通过。真机、签名、Release、账户登录及后台下载仍未验证。
+
+**构建链路修复（2026-10-09）：** 当时 CI 在 Homebrew Gradle 9.7.1 配置 Kotlin 插件时失败（`DefaultArtifactPublicationSet` 缺失），尚未执行 iOS 编译。现提交 Gradle 8.10.2 官方 wrapper jar 和脚本，校验分发包 SHA-256，CI 直接运行 wrapper；Info.plist bundle ID 改为引用 Xcode 设置。下方各阶段记录保留历史状态。
 
 本轮继续修复编译阻塞：SQL 文件版权说明改为 SQL 行注释（保留授权全文），schema 显式导入 Kotlin Boolean/Int，并为下载任务字段接入 Int/Long 适配器；Ktor 请求类型与 PATCH 构建替换残留 OkHttp 调用；修正中文口令字符编码、更新说明列表操作、README 相对链接、下载目录常量、凭证丢失提示，以及 JVM actual 重复声明。另修复 JVM 文件 facade 与主题 setter 名称冲突。新增共用解析回归测试，实际发现 Ktor 不归一化点路径，现补齐 literal dot segment 归一化并保留转义路径、查询与 fragment。CI 在 Xcode 前执行共用测试。
 
-本轮验证：Linux / Temurin JDK 17.0.20.1 / Gradle 8.10.2 执行 `./gradlew :shared:compileKotlinJvm :shared:jvmTest --no-daemon --console=plain`，结果 `BUILD SUCCESSFUL`；共 3 项回归测试，失败 0、跳过 0。另通过 shell 语法、Info.plist、scheme 引用与 diff 空白检查。iOS target 在 Linux 被禁用，未验证 Kotlin/Native、Swift 或真机运行。GitHub 上传被自动审批阻止（目标与发布授权未确认），这些结果来自本地工作区，远端 CI 尚未运行修复版本。
+本轮验证：Linux / Temurin JDK 17.0.20.1 / Gradle 8.10.2 执行 `./gradlew :shared:compileKotlinJvm :shared:jvmTest --no-daemon --console=plain`，结果 `BUILD SUCCESSFUL`；共 3 项回归测试，失败 0、跳过 0。另通过 shell 语法、Info.plist、scheme 引用与 diff 空白检查。iOS target 在 Linux 被禁用，未验证 Kotlin/Native、Swift 或真机运行。首轮 GitHub 上传曾被自动审批阻止；用户后续明确批准后已推送并启动 macOS CI。此处 JVM 结果来自本地，后续 iOS 结果另行记录。
 
 **Stage 5 当前状态说明（2026-10-09）：** Stage 1、2a、2b、3、4 五个章节均已存在，下面保留各阶段的历史记录，不能把旧 TODO 全部视为当前状态。Mac 构建/签名/运行步骤见 [BUILD-iOS.md](BUILD-iOS.md)，功能边界见 [README.md](README.md)。Stage 5 仅检查文本和源码、修改三份文档，没有运行构建、编译、Gradle、Xcode 或测试。
 

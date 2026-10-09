@@ -3,8 +3,13 @@
 将 [CYQawa/YunX](https://github.com/CYQawa/YunX) Android 版移植到 iOS，采用
 Kotlin Multiplatform（KMP）共享业务代码与 Compose Multiplatform（CMP）共享界面。
 Stage 1–4 已落地工程脚手架、commonMain 数据层与 UI、iosMain actual 和 Swift 生命周期胶水。
-Stage 5 完成构建文档；源码就位不代表 Mac 编译、签名、真机运行已验证。
-2026-10-09 在 Linux / JDK 17 上通过 JVM 编译与 3 项共用回归测试；iOS 编译和运行仍待验证。
+Stage 5 完成构建文档。2026-10-09 已通过 JVM 编译与 3 项共用回归测试，
+并在 macOS 15 / Xcode 16.4 CI 完成 Kotlin/Native、Swift、Debug arm64 模拟器构建与启动检查。
+应用启动后持续运行至少 15 秒，截图已确认显示“欢迎使用云析”界面。
+[通过的 CI](https://github.com/cc1477/YunX-iOS/actions/runs/37901341331) 提供
+[模拟器应用和启动截图](https://github.com/cc1477/YunX-iOS/actions/runs/37901341331/artifacts/11603375521)，
+产物保留至 2026-10-16；它仅供 Apple Silicon iOS 模拟器使用，不是可安装到真机的 IPA。
+真机、Release、签名、登录和下载功能尚未验证。
 
 ## 目录结构
 
