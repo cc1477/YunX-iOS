@@ -1,0 +1,80 @@
+name: Unsigned iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/ios-ipa.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  ipa:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Select Xcode
+        id: xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app
+          xcodebuild -version
+          xcodebuild -version | awk 'NR == 2 { print "build=" $3 }' >> "$GITHUB_OUTPUT"
+
+      - name: Restore Kotlin Native caches
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-${{ hashFiles('gradle/libs.versions.toml', 'shared/build.gradle.kts') }}
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build Release for iPhone without signing
+        run: >
+          xcodebuild -project iosApp/iosApp.xcodeproj -scheme YunX
+          -configuration Release -sdk iphoneos
+          -destination 'generic/platform=iOS'
+          -derivedDataPath iosApp/build-device
+          CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+          CODE_SIGN_IDENTITY="" build
+
+      - name: Verify device application and package IPA
+        working-directory: iosApp/build-device
+        run: |
+          APP="Build/Products/Release-iphoneos/YunX.app"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleSupportedPlatforms:0' "$APP/Info.plist" | /usr/bin/grep -x iPhoneOS
+          test "$(xcrun lipo -archs "$APP/YunX")" = arm64
+          test "$(xcrun lipo -archs "$APP/Frameworks/shared.framework/shared")" = arm64
+          xcrun vtool -show-build "$APP/YunX"
+          xcrun vtool -show-build "$APP/Frameworks/shared.framework/shared"
+          test ! -e "$APP/embedded.mobileprovision"
+          mkdir -p Payload
+          ditto "$APP" Payload/YunX.app
+          ditto -c -k --keepParent Payload YunX-unsigned.ipa
+          shasum -a 256 YunX-unsigned.ipa > YunX-unsigned.ipa.sha256
+          unzip -t YunX-unsigned.ipa
+          echo "Unsigned Release arm64 IPA for iPhone; requires signing before installation." > BUILD-INFO.txt
+          git -C ../.. rev-parse HEAD >> BUILD-INFO.txt
+          xcodebuild -version >> BUILD-INFO.txt
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: YunX-unsigned-ipa
+          path: |
+            iosApp/build-device/YunX-unsigned.ipa
+            iosApp/build-device/YunX-unsigned.ipa.sha256
+            iosApp/build-device/BUILD-INFO.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Stop Gradle
+        if: always()
+        run: ./gradlew --stop
