@@ -2,7 +2,7 @@
 
 返回 [README](README.md)；移植历史与未验证项见 [PORTING-NOTES](PORTING-NOTES.md)。
 
-2026-10-09 已通过 Linux/JDK 17 的 JVM 编译与 3 项共用回归测试，并在 GitHub macos-15 CI 完成 Debug arm64 模拟器的 Kotlin/Native framework、Swift 与应用构建。真机、Release 和签名未验证；[CI 37901341331](https://github.com/cc1477/YunX-iOS/actions/runs/37901341331) 已通过模拟器启动检查，截图确认显示欢迎界面。Stage 5 最初仅静态检查，本文现已补充后续真实构建结果。
+2026-10-10 的 0.1.1（5）已通过本地及 GitHub macOS 的 8 项共享测试、Debug arm64 真机 IPA 编译和模拟器启动检查。首次启动进入解析页，原生截图验证系统字号切换与深色模式。构建产物及验证范围见 [UI-ADAPTATION.md](UI-ADAPTATION.md)。IPA 需自行签名，真机运行与 Release 构建仍待验证。
 
 ## 先了解平台限制
 
@@ -12,7 +12,7 @@
 >
 > **登录使用 WKWebView。** Cookie 在导航完成后从 WKHTTPCookieStore 按允许域名提取，再由业务流程校验保存。桌面 Chrome UA 仅改变字符串，不能模拟 Chromium/client hints；SPA 无导航更新、跨域 SSO、验证码和迅雷专有验证均可能需要手动 Cookie/Token 或返回后重试。未实现 localStorage Token 自动提取，也未宣称所有网盘登录可用。
 
-下载目录为应用沙盒 `Documents/Downloads`，不是 Android 公共存储。文件打开/日志分享当前使用 `openUrl(file://)`，原生分享面板、QuickLook 和文件选择流程仍待补齐；不能保证每种文件都可直接打开。更新页展示上游发布信息，不是 iOS APK 安装或已建立的 iOS 发布渠道。通知没有 Android 常驻进度条，拒绝通知授权不影响下载。
+下载目录为应用沙盒 `Documents/Downloads`，不是 Android 公共存储。文件打开/日志分享当前使用 `openUrl(file://)`，原生分享面板、QuickLook 和文件选择流程仍待补齐；不能保证每种文件都可直接打开。设置页“获取最新 iOS 版本”打开 Cloudflare 分发页。通知没有 Android 常驻进度条，拒绝通知授权不影响下载。
 
 ## 环境要求
 
@@ -25,7 +25,7 @@
 | Gradle | 使用工程 wrapper，当前分发版本 8.10.2；无需系统 Gradle |
 | CocoaPods | **不需要**：无 CocoaPods 插件、Podfile 或 pod 集成；直接链接动态 `shared.framework` |
 | Apple 账号 | 模拟器可关闭签名；真机需 Apple Developer 账号及可用 Team/开发签名，个人测试可使用 Xcode Personal Team，分发权限另行配置 |
-| 设备 | 工程部署目标 iOS 15.0，iPhone、竖屏，Swift 5；目标设备还需被所选 Xcode 支持 |
+| 设备 | 工程部署目标 iOS 15.0，iPhone、竖屏和横屏，Swift 5；目标设备还需被所选 Xcode 支持 |
 
 macOS/Xcode 对应关系见 [Apple 官方支持矩阵](https://developer.apple.com/xcode/system-requirements)。工程 CI 文件选择 `macos-15`，Debug 模拟器构建已实际通过。工程固定 Kotlin 2.1.0、CMP 1.8.2、SQLDelight 2.0.2、Ktor 3.1.3，版本来源为 `gradle/libs.versions.toml`。
 
