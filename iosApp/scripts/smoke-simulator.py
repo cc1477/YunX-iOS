@@ -76,6 +76,19 @@ def main():
             if report.is_file():
                 shutil.copy2(report, diagnostics / report.name)
                 print(f"Saved crash report: {report.name}", flush=True)
+        # Relaunch only for diagnosis; a successful retry never passes the smoke test.
+        try:
+            launch = simctl("launch", "--wait-for-debugger", udid, "com.yunx.app.ios")
+            debug_pid = re.search(r":\s*(\d+)\s*$", launch)[1]
+            result = subprocess.run(
+                ["xcrun", "lldb", "--batch", "-p", debug_pid, "-o", "continue",
+                 "-o", "thread backtrace all", "-o", "quit"],
+                capture_output=True, text=True, timeout=90
+            )
+            (diagnostics / "lldb.log").write_text(result.stdout + result.stderr)
+            print(result.stdout[-24000:] + result.stderr[-4000:], flush=True)
+        except Exception as debug_error:
+            print(f"Debugger diagnostic failed: {debug_error}", flush=True)
         raise
     finally:
         subprocess.run(["xcrun", "simctl", "shutdown", udid], check=False)
