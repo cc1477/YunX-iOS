@@ -94,6 +94,6 @@ jobs:
 
       - name: Verify public IPA
         run: |
-          curl --fail --silent --show-error --retry 5 --retry-delay 5 --max-time 300 \
+          curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 5 --retry-max-time 120 --max-time 300 \
             "https://yunx-lcsign-cc1477.pages.dev/ipa/${EXPECTED_SHA256}/YunX-unsigned.ipa" -o public.ipa
           echo "${EXPECTED_SHA256}  public.ipa" | sha256sum --check
