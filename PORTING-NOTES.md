@@ -1,7 +1,8 @@
-**首次构建准备：`gradle-wrapper.jar` 未能下载，原因是 `raw.githubusercontent.com` 超时。**
-Mac 首次构建前，请在项目根目录执行 `brew install gradle && gradle wrapper` 生成 wrapper。
-项目的 wrapper 分发版本固定为 Gradle 8.10.2；生成 jar 前无法使用 `./gradlew`。
+**构建链路修复（2026-10-09）：** 最新 CI 在 Homebrew Gradle 9.7.1 配置 Kotlin 插件时失败（`DefaultArtifactPublicationSet` 缺失），尚未执行 iOS 编译。现提交 Gradle 8.10.2 官方 wrapper jar 和脚本，校验分发包 SHA-256，CI 直接运行 wrapper；Info.plist bundle ID 改为引用 Xcode 设置。下方各阶段记录保留历史状态。
 
+本轮继续修复编译阻塞：SQL 文件版权说明改为 SQL 行注释（保留授权全文），schema 显式导入 Kotlin Boolean/Int，并为下载任务字段接入 Int/Long 适配器；Ktor 请求类型与 PATCH 构建替换残留 OkHttp 调用；修正中文口令字符编码、更新说明列表操作、README 相对链接、下载目录常量、凭证丢失提示，以及 JVM actual 重复声明。另修复 JVM 文件 facade 与主题 setter 名称冲突。新增共用解析回归测试，实际发现 Ktor 不归一化点路径，现补齐 literal dot segment 归一化并保留转义路径、查询与 fragment。CI 在 Xcode 前执行共用测试。
+
+本轮验证：Linux / Temurin JDK 17.0.20.1 / Gradle 8.10.2 执行 `./gradlew :shared:compileKotlinJvm :shared:jvmTest --no-daemon --console=plain`，结果 `BUILD SUCCESSFUL`；共 3 项回归测试，失败 0、跳过 0。另通过 shell 语法、Info.plist、scheme 引用与 diff 空白检查。iOS target 在 Linux 被禁用，未验证 Kotlin/Native、Swift 或真机运行。GitHub 上传被自动审批阻止（目标与发布授权未确认），这些结果来自本地工作区，远端 CI 尚未运行修复版本。
 
 **Stage 5 当前状态说明（2026-10-09）：** Stage 1、2a、2b、3、4 五个章节均已存在，下面保留各阶段的历史记录，不能把旧 TODO 全部视为当前状态。Mac 构建/签名/运行步骤见 [BUILD-iOS.md](BUILD-iOS.md)，功能边界见 [README.md](README.md)。Stage 5 仅检查文本和源码、修改三份文档，没有运行构建、编译、Gradle、Xcode 或测试。
 

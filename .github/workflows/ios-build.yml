@@ -22,11 +22,14 @@ jobs:
           sudo xcode-select -s /Applications/Xcode.app || true
           xcodebuild -version
 
-      - name: Generate Gradle wrapper
-        run: |
-          brew install gradle
-          gradle wrapper --gradle-version 8.10.2
-          chmod +x gradlew
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Verify Gradle wrapper
+        run: ./gradlew --version
+
+      - name: Test shared code
+        run: ./gradlew :shared:jvmTest --console=plain
 
       - name: Build iOS app (simulator, no code signing)
         working-directory: iosApp

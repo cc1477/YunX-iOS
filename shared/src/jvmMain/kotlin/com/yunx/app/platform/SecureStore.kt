@@ -38,14 +38,6 @@ actual class SecureStore actual constructor() {
     actual fun loadSecret(key: String): ByteArray? = file(key).let { if (it.exists()) it.readBytes() else null }
     actual fun deleteSecret(key: String) { Files.deleteIfExists(file(key).toPath()) }
 }
-actual fun clearLoginWebData() = Unit
-actual fun setDownloadIdleTimerDisabled(disabled: Boolean) = Unit
-actual class Notifier actual constructor() {
-    actual fun progress(taskId: Long, title: String, percent: Int, speed: String) = Unit
-    actual fun result(taskId: Long, title: String, success: Boolean, error: String) = Unit
-    actual fun clear(taskId: Long) = Unit
-}
-
 /** Simplified FileCredentialCipher policy: domain-separated PBKDF2, cached by the common cipher. */
 internal actual fun localCredentialKey(secret: ByteArray): ByteArray = com.yunx.app.data.security.PortableCrypto.deriveKey(
     secret.joinToString("") { (it.toInt() and 255).toString(16).padStart(2, '0') },

@@ -1166,7 +1166,7 @@ private fun AddDownloadDialog(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    text = "下载文件将保存到 ${Environment.DIRECTORY_DOWNLOADS} 目录",
+                    text = "下载文件将保存到 ${com.yunx.app.platform.appDownloadDir()} 目录",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

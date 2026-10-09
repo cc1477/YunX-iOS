@@ -4,7 +4,7 @@
 Kotlin Multiplatform（KMP）共享业务代码与 Compose Multiplatform（CMP）共享界面。
 Stage 1–4 已落地工程脚手架、commonMain 数据层与 UI、iosMain actual 和 Swift 生命周期胶水。
 Stage 5 完成构建文档；源码就位不代表 Mac 编译、签名、真机运行已验证。
-JVM 编译验证由协调人在 Linux 上独立进行，本 README 不代报验证结果。
+2026-10-09 在 Linux / JDK 17 上通过 JVM 编译与 3 项共用回归测试；iOS 编译和运行仍待验证。
 
 ## 目录结构
 
@@ -39,10 +39,9 @@ AppIcon 目前仅有元数据占位，需在 Mac 的 Xcode 中补充真实图标
 按 [BUILD-iOS.md](BUILD-iOS.md) 完成 JDK 17、Xcode 16+、wrapper 准备，再构建和运行。
 不需要 CocoaPods。当前未配置 XCFramework 聚合 task，使用指南列出的四个 framework link task。
 
-**首次构建须处理：** wrapper jar 因上游下载超时缺失，应重新生成整套 wrapper 并固定 Gradle 8.10.2；
-共享 YunX scheme 的 BlueprintIdentifier 与实际 target ID 不一致，需要按指南修复引用。
-真机签名更换 bundle ID 时，Xcode Debug/Release 设置与写死 ID 的 Info.plist 必须同步。
-这些是静态检查发现，本文未修改工程配置或执行构建。
+工程已包含官方 Gradle 8.10.2 wrapper，并固定分发包 SHA-256；无需安装系统 Gradle。
+共享 YunX scheme 已指向正确 target，Info.plist 的 bundle ID 跟随 Xcode 的
+`PRODUCT_BUNDLE_IDENTIFIER`，真机签名时在 target 设置中修改即可。
 
 ## iOS 平台差异（必读）
 

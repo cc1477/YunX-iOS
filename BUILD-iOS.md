@@ -2,7 +2,7 @@
 
 返回 [README](README.md)；移植历史与未验证项见 [PORTING-NOTES](PORTING-NOTES.md)。
 
-本文按当前工程文件静态核对编写。**Stage 5 没有执行构建、编译、Gradle、Xcode 或运行测试；以下命令供 Mac 用户执行，不表示已验证通过。** JVM 编译验证由协调人在 Linux 上独立进行，本文不代报结果，也不以 JVM 结果替代 iOS 验证。
+本文按当前工程文件静态核对编写。**Stage 5 没有执行构建、编译、Gradle、Xcode 或运行测试；以下命令供 Mac 用户执行，不表示已验证通过。** 2026-10-09 后续在 Linux / JDK 17 上完成 JVM 编译与 3 项共用回归测试，全部通过；该结果不能替代 iOS 验证。
 
 ## 先了解平台限制
 
@@ -22,7 +22,7 @@
 | macOS | Xcode 16.0 的最低基线为 Sonoma 14.5；使用其他 Xcode 版本时按 Apple 支持矩阵匹配 macOS，不能认为所有 16+ 都支持 14.5 |
 | Xcode | 完整 Xcode 16+，安装 iOS SDK 和所选模拟器 runtime，首次启动完成组件安装与许可接受；更高版本与当前 Kotlin/Native 的兼容性未验证 |
 | JDK | 17；`shared/build.gradle.kts` 使用 `jvmToolchain(17)` |
-| Gradle | 使用工程 wrapper，当前分发版本 8.10.2；系统 Gradle 仅用于补齐 wrapper |
+| Gradle | 使用工程 wrapper，当前分发版本 8.10.2；无需系统 Gradle |
 | CocoaPods | **不需要**：无 CocoaPods 插件、Podfile 或 pod 集成；直接链接动态 `shared.framework` |
 | Apple 账号 | 模拟器可关闭签名；真机需 Apple Developer 账号及可用 Team/开发签名，个人测试可使用 Xcode Personal Team，分发权限另行配置 |
 | 设备 | 工程部署目标 iOS 15.0，iPhone、竖屏，Swift 5；目标设备还需被所选 Xcode 支持 |
@@ -44,22 +44,13 @@ macOS/Xcode 对应关系见 [Apple 官方支持矩阵](https://developer.apple.c
 
 2. 完成 Xcode 首次启动，在 Xcode Settings → Locations 中选择完整 Xcode 的 Command Line Tools；下载所需 iOS 模拟器 runtime。[Kotlin 官方准备说明](https://kotlinlang.org/docs/apple-framework.html)要求安装 Xcode 工具并接受许可。
 
-3. 补齐 wrapper。`gradle/wrapper/gradle-wrapper.jar` 当前缺失，原因是 Stage 1 从 `raw.githubusercontent.com` 下载超时，详见 [PORTING-NOTES 顶部](PORTING-NOTES.md)。项目根目录按首次准备要求执行：
+3. 工程已提交官方 Gradle 8.10.2 wrapper（jar 与启动脚本），并校验分发包 SHA-256。无需 Homebrew Gradle，先检查：
 
    ```sh
-   brew install gradle && gradle wrapper
+   ./gradlew --version
    ```
 
-   **Homebrew 的 Gradle 版本不一定是 8.10.2，普通 `gradle wrapper` 可能改写分发版本。** 随后显式固定工程版本并重新生成脚本/jar：
-
-   ```sh
-   gradle wrapper --gradle-version 8.10.2 --distribution-type bin
-   chmod +x gradlew iosApp/scripts/build-shared.sh
-   ```
-
-   核对 `gradle/wrapper/gradle-wrapper.properties` 的 `distributionUrl` 指向 `https://services.gradle.org/distributions/gradle-8.10.2-bin.zip`，并确认 `gradle/wrapper/gradle-wrapper.jar` 已存在。当前 `gradlew` 的 `CLASSPATH` 赋值还含有不寻常的转义引号字面量；未执行它来判断影响，建议重新生成整套 wrapper，而非只补 jar 后假定旧脚本可用。
-
-   如果 Homebrew 新版 Gradle 在配置旧插件时失败，需用 Gradle 8.10.2 发行版重新执行同样的 wrapper 生成操作。本工作区已有 `.tools/gradle-8.10.2/bin/gradle` 和 zip，可在该目录随工程拷贝到 Mac 的情况下用前者替代系统 `gradle`；`.tools/` 是辅助文件，不应假定每份源码都包含它。完成后日常一律使用 `./gradlew`。
+   首次运行会下载固定版本的 Gradle；日常构建一律使用 `./gradlew`。
 
 ## 编译 shared.framework
 
@@ -91,14 +82,7 @@ macOS/Xcode 对应关系见 [Apple 官方支持矩阵](https://developer.apple.c
 open iosApp/iosApp.xcodeproj
 ```
 
-选择 **YunX** scheme 和 YunX target。~~**当前共享 scheme 存在可定位的配置问题：**~~
-
-- ~~`iosApp/iosApp.xcodeproj/xcshareddata/xcschemes/YunX.xcscheme` 的三个 `BuildableReference` 使用 `BlueprintIdentifier="A1000000000000000000001B"`。~~
-- ~~`project.pbxproj` 中 YunX 的真实 `PBXNativeTarget` ID 是 `A50000000000000000000001`。~~
-- ~~在 Mac 上构建前，将三个引用统一指向真实 ID；或在 Manage Schemes 中重新创建并共享 YunX scheme，确保 Build 和 Run 都选择实际 YunX target。本文仅记录问题，没有修改工程。后文 `-scheme YunX` 示例以此修复为前提。~~
-- （2026-10-09 已修复）`YunX.xcscheme` 的三个 `BuildableReference` 的 `BlueprintIdentifier` 已统一指向
-  `project.pbxproj` 中 YunX target 的真实 ID `A50000000000000000000001`。若 Xcode 仍提示 scheme 不可构建，
-  在 Manage Schemes 中重新创建并共享 YunX scheme 即可。后文 `-scheme YunX` 示例以此修复为前提。
+选择 **YunX** scheme 和 YunX target。共享 scheme 的三个 BuildableReference 已统一指向真实 target ID `A50000000000000000000001`。
 
 Edit Scheme → Run → Info → Build Configuration 选择 Debug 或 Release；现有 scheme 的 Run/Test/Analyze 为 Debug，Profile/Archive 为 Release。切换运行目标选择模拟器或真机，由 SDK 条件自动选择 target，无需手工改绝对路径。
 
@@ -118,7 +102,7 @@ Frameworks phase 负责链接，Embed Frameworks phase 负责复制并 CodeSignO
 ## 真机签名与运行
 
 1. Xcode Settings → Accounts 添加开发账号，在 YunX target → Signing & Capabilities 启用 Automatically manage signing，选择自己的 Team。
-2. 将 `com.yunx.app.ios` 改成自己的唯一 bundle ID，**同时修改 Debug/Release 的 `PRODUCT_BUNDLE_IDENTIFIER` 与 `iosApp/iosApp/Info.plist` 的 `CFBundleIdentifier`**。后者当前为写死字符串；也可把它改成 `$(PRODUCT_BUNDLE_IDENTIFIER)` 以统一来源。只改 Xcode Signing 页面可能仍打包旧 ID，造成描述文件不匹配。
+2. 将 `com.yunx.app.ios` 改成自己的唯一 bundle ID，修改 Debug/Release 的 `PRODUCT_BUNDLE_IDENTIFIER`。Info.plist 已使用 `$(PRODUCT_BUNDLE_IDENTIFIER)`，会跟随 target 设置。
 3. `shared/src/iosMain/kotlin/com/yunx/app/platform/SecureStore.kt` 的 Keychain service 也是 `com.yunx.app.ios`，它是凭证命名空间，不是 provisioning bundle ID；如果改名须考虑旧凭证迁移/重新登录。后台 session ID `com.yunx.app.bg` 在 Kotlin `BackgroundDownloader.kt` 和 Swift `AppDelegate.swift` 中成对使用，若修改必须同步两处。
 4. 连接并信任 iPhone，按设备系统要求启用 Developer Mode，确认设备 iOS ≥15.0 且 Xcode 支持该系统版本。在 scheme 目标中选择该 iPhone，Run（⌘R）。Debug 自动选择 `iosArm64/debugFramework`；想运行 Release 则在 Edit Scheme 中切换配置。
 5. 首次运行依次检查初始化、数据库、登录与一个小文件下载。后台长文件、锁屏、通知拒绝授权、强制退出和冷启动恢复需单独验证，模拟器不能替代这些真机检查。
@@ -127,7 +111,7 @@ AppIcon 仅有元数据占位，正式归档/分发前需在 `iosApp/iosApp/Asse
 
 ## 模拟器构建与运行
 
-先修复上文的 scheme 引用并完成 wrapper 准备。Xcode 中选一个已安装 runtime 的 arm64 iPhone 模拟器，Run 即可，不需要真机 Team。
+共享 scheme 引用已修复，完成上述环境准备后，Xcode 中选一个已安装 runtime 的 arm64 iPhone 模拟器，Run 即可，不需要真机 Team。
 
 命令行示例在工程根目录执行。先获取本机已有模拟器的 UDID；不写死不存在的设备型号或系统版本：
 

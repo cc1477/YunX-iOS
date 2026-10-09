@@ -86,7 +86,7 @@ object XunleiKouling {
         val t = normalize(text)
         if (t.isEmpty() || t.length > MAX_LENGTH) return false
         if (!t.all { it.isLetterOrDigit() }) return false
-        return t.any { it.status.value in 0x4E00..0x9FFF }
+        return t.any { it.code in 0x4E00..0x9FFF }
     }
 
     /** 拼 jump 请求 URL：`wd`（中文口令）必须 URL 编码 */

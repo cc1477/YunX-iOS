@@ -25,6 +25,8 @@ internal sealed class CredentialKeyException(message: String, cause: Throwable? 
     class Unavailable(reason: String, cause: Throwable? = null) : CredentialKeyException("本机密钥暂时不可用：$reason", cause)
 }
 object CredentialStore {
+    const val LOST_TITLE = "本机凭证密钥不可用"
+    const val LOST_MESSAGE = "保存的登录凭证无法解密，请重新登录相关网盘账号。"
     private val prefs = SettingsStore()
     internal fun isKeyFailure(error: Throwable) = error is CredentialKeyException
     internal fun isKeyLost(error: Throwable) = error is CredentialKeyException.PermanentlyInvalid

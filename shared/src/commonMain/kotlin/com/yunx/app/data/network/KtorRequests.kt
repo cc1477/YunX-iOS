@@ -65,7 +65,23 @@ internal fun formDecode(value: String, charset: String = "UTF-8"): String {
     require(charset.equals("UTF-8", true))
     return value.decodeURLQueryComponent(plusIsSpace = true)
 }
-internal fun resolveUrl(base: String, target: String): String = URLBuilder(base).apply { takeFrom(target) }.buildString()
+/** Resolve relative links and remove literal dot segments without decoding escaped separators. */
+internal fun resolveUrl(base: String, target: String): String = URLBuilder(base).apply {
+    takeFrom(target)
+    val parts = encodedPath.split('/')
+    val normalized = mutableListOf<String>()
+    parts.forEachIndexed { index, part ->
+        when (part) {
+            "." -> if (index == parts.lastIndex) normalized.add("")
+            ".." -> {
+                if (normalized.size > 1) normalized.removeAt(normalized.lastIndex)
+                if (index == parts.lastIndex) normalized.add("")
+            }
+            else -> normalized.add(part)
+        }
+    }
+    encodedPath = normalized.joinToString("/")
+}.buildString()
 internal fun randomUuid(): String {
     val bytes = com.yunx.app.platform.secureRandomBytes(16)
     bytes[6] = ((bytes[6].toInt() and 15) or 64).toByte()

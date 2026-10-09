@@ -18,6 +18,7 @@
 
 package com.yunx.app.ui.theme
 
+import kotlin.jvm.JvmName
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -76,18 +77,21 @@ object ThemeController {
     }
 
     /** 设置深色模式并持久化 */
+    @JvmName("updateDarkMode")
     fun setDarkMode(value: Int) {
         darkMode = value.coerceIn(0, 2)
         SettingsRepository().darkMode = darkMode
     }
 
     /** 设置主题色模式并持久化（0=动态 / 1=默认 / 2=自定义） */
+    @JvmName("updateColorMode")
     fun setColorMode(value: Int) {
         colorMode = value.coerceIn(0, 2)
         SettingsRepository().themeColorMode = colorMode
     }
 
     /** 设置自定义种子色（自动切到自定义模式）并持久化 */
+    @JvmName("updateSeedColor")
     fun setSeedColor(argb: Long) {
         seedColor = argb
         colorMode = 2
@@ -98,18 +102,21 @@ object ThemeController {
     }
 
     /** 设置文件名显示方式并持久化（true=多行折行，false=单行跑马灯） */
+    @JvmName("updateFileNameMultiLine")
     fun setFileNameMultiLine(value: Boolean) {
         fileNameMultiLine = value
         SettingsRepository().fileNameMultiLine = value
     }
 
     /** 设置是否自动识别剪贴板分享链接并持久化 */
+    @JvmName("updateClipboardSuggestEnabled")
     fun setClipboardSuggestEnabled(value: Boolean) {
         clipboardSuggestEnabled = value
         SettingsRepository().clipboardSuggestEnabled = value
     }
 
     /** 设置是否接受预发布版更新并持久化 */
+    @JvmName("updateAcceptPrereleaseUpdate")
     fun setAcceptPrereleaseUpdate(value: Boolean) {
         acceptPrereleaseUpdate = value
         SettingsRepository().acceptPrereleaseUpdate = value
@@ -119,6 +126,7 @@ object ThemeController {
      * 设置下载调试开关并持久化。**关闭会清空全部调试日志**，所以清空与提示由调用方负责
      * （设置页关开关前会先弹二次确认，确认后调用 `DownloadDebugLog.setEnabled`）。
      */
+    @JvmName("updateDownloadDebug")
     fun setDownloadDebug(value: Boolean) {
         downloadDebug = value
         SettingsRepository().downloadDebug = value

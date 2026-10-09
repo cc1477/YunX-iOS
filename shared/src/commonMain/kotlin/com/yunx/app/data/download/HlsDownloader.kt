@@ -25,6 +25,7 @@ import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.http.Url
 import io.ktor.utils.io.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.CancellationException
 import okio.*
 import kotlin.coroutines.coroutineContext
 /** HTTPS-only HLS, bounded playlists/segments, explicit redirects and origin-scoped credentials. */

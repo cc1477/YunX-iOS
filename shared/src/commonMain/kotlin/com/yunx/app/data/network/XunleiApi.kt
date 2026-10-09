@@ -42,7 +42,6 @@ import com.yunx.app.data.network.model.ShareInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import kotlin.random.Random
 
 /** 迅雷分享解析结果 */
 data class XunleiShareResult(
@@ -533,7 +532,7 @@ class XunleiApi(
                 .append(formEncode(pageToken))
                 .append("&thumbnail_size=SIZE_SMALL")
         }
-        val build: (String) -> Request = { t -> panRequest(url, accessToken, deviceId, t) }
+        val build: (String) -> HttpRequestBuilder = { t -> panRequest(url, accessToken, deviceId, t) }
         val parse: (JsonObject) -> XunleiShareResult = { data ->
             // 提取码状态检查：PASS_CODE_EMPTY（没填）/ PASS_CODE_ERROR（错误）/ PASS_CODE_NEED（需要）
             // 这三种情况 files 为空数组且 HTTP 200，若不识别会被误判为「此目录为空」
@@ -578,7 +577,7 @@ class XunleiApi(
                 .append(formEncode(pageToken))
                 .append("&thumbnail_size=SIZE_SMALL")
         }
-        val build: (String) -> Request = { t -> panRequest(url, accessToken, deviceId, t) }
+        val build: (String) -> HttpRequestBuilder = { t -> panRequest(url, accessToken, deviceId, t) }
         val parse: (JsonObject) -> XunleiFilePage = { data ->
             XunleiFilePage(
                 files = data.optJsonArray("files")?.let(::parseFileArray) ?: emptyList(),
@@ -870,7 +869,7 @@ class XunleiApi(
             if (captchaToken.isNotBlank()) builder.withHeader("X-Captcha-Token", captchaToken)
         val rb = body?.toRequestBody(jsonMediaType) ?: "{}".toRequestBody(jsonMediaType)
         return when (method) {
-            "PATCH" -> builder.patch(rb)
+            "PATCH" -> builder.apply { this.method = HttpMethod.Patch; setBody(rb) }
             "GET" -> builder.withGet()
             else -> builder.withPost(rb)
         }
@@ -883,7 +882,7 @@ class XunleiApi(
         captchaToken: String,
         deviceId: String,
         action: String,
-        build: (String) -> Request,
+        build: (String) -> HttpRequestBuilder,
         parse: (JsonObject) -> T
     ): T = panCallInternal(captchaToken, deviceId, action, false, build, parse)
 
@@ -896,7 +895,7 @@ class XunleiApi(
         captchaToken: String,
         deviceId: String,
         action: String,
-        build: (String) -> Request,
+        build: (String) -> HttpRequestBuilder,
         parse: (JsonObject) -> T
     ): T = panCallInternal(captchaToken, deviceId, action, true, build, parse)
 
@@ -905,7 +904,7 @@ class XunleiApi(
         deviceId: String,
         action: String,
         anonymous: Boolean,
-        build: (String) -> Request,
+        build: (String) -> HttpRequestBuilder,
         parse: (JsonObject) -> T
     ): T {
         var token = if (anonymous) captchaToken else (refreshedCaptcha ?: captchaToken)

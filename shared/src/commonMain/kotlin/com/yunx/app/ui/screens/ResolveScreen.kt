@@ -931,5 +931,5 @@ private fun resolveRel(base: String, rel: String): String {
     if (rel.startsWith("http://") || rel.startsWith("https://") || rel.startsWith("mailto:")) return rel
     // 含转义括号的链接（如 [a](b\(c\))）按原样保留，不做路径补全，避免被错误补全
     if (rel.contains('\\')) return rel
-    return runCatching { io.ktor.http.Url(base).resolve(rel).toString() }.getOrDefault(base + rel)
+    return runCatching { com.yunx.app.data.network.resolveUrl(base, rel) }.getOrDefault(base + rel)
 }

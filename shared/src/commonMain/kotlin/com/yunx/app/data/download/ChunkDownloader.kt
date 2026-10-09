@@ -24,6 +24,7 @@ import io.ktor.utils.io.*
 import com.yunx.app.platform.PlatformLock
 import com.yunx.app.platform.locked
 import kotlinx.coroutines.*
+import kotlinx.coroutines.CancellationException
 import okio.*
 import kotlin.coroutines.coroutineContext
 internal const val BUFFER_SIZE = 64 * 1024

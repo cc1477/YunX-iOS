@@ -18,6 +18,7 @@
 
 package com.yunx.app.data.db
 import app.cash.sqldelight.db.SqlDriver
+import app.cash.sqldelight.ColumnAdapter
 import com.yunx.app.platform.PlatformLock
 import com.yunx.app.platform.locked
 import com.yunx.app.data.security.SecureStoreCredentialCipher
@@ -60,10 +61,17 @@ class AppDatabase private constructor(val database: YunXDb) {
     fun rawXunleiAccountDao(): XunleiAccountDao = rawXunleiAccountDaoValue
     fun xunleiAccountDao(): XunleiAccountDao = SecureAccountDaos.xunlei(rawXunleiAccountDaoValue, credentialCipher)
     companion object {
+        private val intAdapter = object : ColumnAdapter<Int, Long> {
+            override fun decode(databaseValue: Long) = databaseValue.toInt()
+            override fun encode(value: Int) = value.toLong()
+        }
         private val lock = PlatformLock()
         private var instance: AppDatabase? = null
         fun getInstance(): AppDatabase = locked(lock) {
-            instance ?: AppDatabase(YunXDb(createDbDriver())).also { instance = it }
+            instance ?: AppDatabase(YunXDb(
+                createDbDriver(),
+                download_taskAdapter = Download_task.Adapter(intAdapter, intAdapter)
+            )).also { instance = it }
         }
         fun get(): AppDatabase = getInstance()
     }

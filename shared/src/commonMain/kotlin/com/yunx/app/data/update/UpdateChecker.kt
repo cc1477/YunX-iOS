@@ -158,10 +158,10 @@ object UpdateChecker {
             if (stripped.isEmpty() && line.isNotBlank()) continue
             if (stripped.isEmpty()) {
                 if (kept.isNotEmpty() && kept.last().isEmpty()) continue
-                kept.append("")
+                kept.add("")
             } else {
                 // 行内还夹着装饰（如「文字 <img ...>」）时只去掉片段，其余文字原样保留
-                kept.append(stripped)
+                kept.add(stripped)
             }
         }
         // trim() 顺手去掉说明开头/结尾的空行（正文第一个字符往往就是换行）
