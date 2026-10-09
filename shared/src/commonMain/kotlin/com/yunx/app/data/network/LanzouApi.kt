@@ -215,7 +215,7 @@ class LanzouApi(
                 if (pos[z] == x + 1) q[z] = arg1[x]
             }
         }
-        val u = String(q)
+        val u = q.concatToString()
         return buildString {
             var i = 0
             while (i + 2 <= u.length && i + 2 <= mask.length) {
@@ -655,7 +655,7 @@ class LanzouApi(
             ?: jsVar(html, "sign") ?: inputValue(html, "sign")
             ?: return null
         // 节点页面 2 秒后才显示按钮，需等同样时长再提交
-        Thread.sleep(2000)
+        kotlinx.coroutines.delay(2000)
         val ajaxUrl = runCatching { resolveUrl(uri.toString(), "ajax.php") }
             .getOrDefault("${uri.protocol.name}://${uri.host}/ajax.php")
         val json = runCatching {

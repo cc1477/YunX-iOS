@@ -32,7 +32,7 @@ actual class ClipboardMonitor actual constructor() {
         dispatch_async(dispatch_get_main_queue()) {
             timer?.invalidate()
             timer = NSTimer.scheduledTimerWithTimeInterval(2.0, true) {
-                if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive) return@scheduledTimerWithTimeInterval
+                if (UIApplication.sharedApplication.applicationState != UIApplicationState.UIApplicationStateActive) return@scheduledTimerWithTimeInterval
                 // iOS can show a paste permission prompt; polling isn't a bypass of that policy.
                 val text = UIPasteboard.generalPasteboard.string?.trim() ?: return@scheduledTimerWithTimeInterval
                 if (text == lastText) return@scheduledTimerWithTimeInterval

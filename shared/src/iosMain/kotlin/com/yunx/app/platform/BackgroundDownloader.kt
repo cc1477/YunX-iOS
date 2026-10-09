@@ -25,6 +25,7 @@ import kotlinx.cinterop.ObjCObjectVar
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
+import kotlinx.cinterop.value
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -131,7 +132,7 @@ private object BackgroundSession : NSObject(), NSURLSessionDownloadDelegateProto
         lastProgress.remove(id)
         write(id, null) // Makes subsequent delegate callbacks from this generation harmless.
         session.getAllTasksWithCompletionHandler { tasks ->
-            tasks.filterIsInstance<NSURLSessionTask>().filter {
+            tasks.orEmpty().filterIsInstance<NSURLSessionTask>().filter {
                 it.taskDescription == id.toString() && it.taskIdentifier.toLong() == token
             }.forEach { it.cancel() }
         }

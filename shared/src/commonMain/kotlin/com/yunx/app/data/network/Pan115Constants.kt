@@ -18,6 +18,8 @@
 
 package com.yunx.app.data.network
 
+import kotlin.concurrent.Volatile
+
 /**
  * 115 网盘常量。
  *

@@ -57,9 +57,9 @@ actual class Notifier actual constructor() {
     }
     private fun post(id: String, title: String, body: String, audible: Boolean) {
         val content = UNMutableNotificationContent().apply {
-            this.title = title
-            this.body = body
-            sound = if (audible) UNNotificationSound.defaultSound() else null
+            setTitle(title)
+            setBody(body)
+            setSound(if (audible) UNNotificationSound.defaultSound() else null)
         }
         center.addNotificationRequest(UNNotificationRequest.requestWithIdentifier(id, content, null)) { error ->
             if (error != null) PlatformLog.w("Notifier", "通知未送达 code=${error.code}")

@@ -17,6 +17,7 @@
  */
 
 package com.yunx.app.util
+import okio.use
 
 import com.yunx.app.platform.*
 import com.yunx.app.data.network.crc32

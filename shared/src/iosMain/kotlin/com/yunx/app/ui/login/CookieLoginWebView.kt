@@ -55,7 +55,7 @@ actual fun CookieLoginWebView(url: String, onCookies: (Map<String, String>) -> U
             decisionHandler: (WKNavigationActionPolicy) -> Unit) {
             val scheme = decidePolicyForNavigationAction.request.URL?.scheme?.lowercase()
             decisionHandler(if (scheme in listOf("http", "https", "about"))
-                WKNavigationActionPolicyAllow else WKNavigationActionPolicyCancel)
+                WKNavigationActionPolicy.WKNavigationActionPolicyAllow else WKNavigationActionPolicy.WKNavigationActionPolicyCancel)
         }
     } }
     val webView = remember(url, delegate) {

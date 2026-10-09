@@ -61,7 +61,7 @@ actual fun gunzip(data: ByteArray): ByteArray = memScoped {
     val stream = alloc<z_stream>()
     memset(stream.ptr, 0, sizeOf<z_stream>().toULong())
     stream.zalloc = null; stream.zfree = null; stream.opaque = null
-    check(inflateInit2_(stream.ptr, 31, zlibVersion(), sizeOf<z_stream>().toInt()) == Z_OK)
+    check(inflateInit2_(stream.ptr, 31, zlibVersion()?.toKString(), sizeOf<z_stream>().toInt()) == Z_OK)
     val result = Buffer()
     try {
         data.usePinned { input ->

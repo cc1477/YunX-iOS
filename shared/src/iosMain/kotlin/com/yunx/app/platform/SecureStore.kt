@@ -29,8 +29,8 @@ import platform.darwin.dispatch_get_main_queue
 import com.yunx.app.data.security.CredentialKeyException
 actual class SecureStore actual constructor() {
     private inline fun <T> query(key: String, block: (CFMutableDictionaryRef) -> T): T = memScoped {
-        val service = CFStringCreateWithCString(null, "com.yunx.app.ios".cstr.ptr, kCFStringEncodingUTF8)!!
-        val account = CFStringCreateWithCString(null, key.cstr.ptr, kCFStringEncodingUTF8)!!
+        val service = CFStringCreateWithCString(null, "com.yunx.app.ios", kCFStringEncodingUTF8)!!
+        val account = CFStringCreateWithCString(null, key, kCFStringEncodingUTF8)!!
         // Objects stay alive until the Security operation finishes; the dictionary has no retain callbacks.
         val dictionary = CFDictionaryCreateMutable(null, 0, null, null)!!
         try {
@@ -70,7 +70,7 @@ actual class SecureStore actual constructor() {
                 result.value?.let { CFRelease(it) }
                 return@query null
             }
-            val data = result.value!!.reinterpret<__CFData>()
+            val data: CFDataRef = result.value!!.reinterpret()
             try {
                 val bytes = ByteArray(CFDataGetLength(data).toInt())
                 if (bytes.isNotEmpty()) bytes.usePinned { platform.posix.memcpy(it.addressOf(0), CFDataGetBytePtr(data), bytes.size.toULong()) }
@@ -85,7 +85,7 @@ actual class SecureStore actual constructor() {
 }
 actual fun clearLoginWebData() {
     dispatch_async(dispatch_get_main_queue()) {
-        WKWebsiteDataStore.defaultDataStore().removeDataOfTypes(WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince = NSDate.distantPast, completionHandler = {})
+        WKWebsiteDataStore.defaultDataStore().removeDataOfTypes(WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince = NSDate(timeIntervalSince1970 = 0.0), completionHandler = {})
     }
 }
 /** Prevents auto-lock only. OS background transfers use NSURLSession, not this idle timer. */
