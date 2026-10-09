@@ -57,6 +57,17 @@ jobs:
           iosApp/build/Build/Products/Debug-iphonesimulator/YunX.app
           iosApp/build/YunX-startup.png
 
+      - name: Upload startup diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: YunX-startup-diagnostics
+          path: |
+            iosApp/build/YunX-startup.png
+            iosApp/build/startup-diagnostics
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Package simulator app
         working-directory: iosApp
         run: ditto -c -k --sequesterRsrc --keepParent build/Build/Products/Debug-iphonesimulator/YunX.app build/YunX-simulator.zip
