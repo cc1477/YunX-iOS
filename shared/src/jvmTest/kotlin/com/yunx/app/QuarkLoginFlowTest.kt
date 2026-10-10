@@ -12,6 +12,8 @@ import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.http.URLProtocol
+import io.ktor.http.Cookie
+import io.ktor.http.Url
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import java.net.InetSocketAddress
@@ -23,6 +25,23 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class QuarkLoginFlowTest {
+    @Test
+    fun refreshedLoginReplacesGuestCookiesAcrossQuarkSubdomains() = runBlocking {
+        val storage = DomainCookiesStorage()
+        val drive = Url("https://drive-pc.quark.cn/1/clouddrive/file/sort")
+        storage.addCookie(drive, Cookie("__puus", "guest", domain = ".quark.cn", path = "/"))
+        // HttpCookies captures explicit account headers as host cookies before sending.
+        storage.addCookie(drive, Cookie("__puus", "authenticated"))
+        assertEquals(listOf("authenticated"), storage.get(drive).filter { it.name == "__puus" }.map { it.value })
+        storage.addCookie(drive, Cookie("__puus", "rotated", domain = ".quark.cn", path = "/"))
+        assertEquals(listOf("rotated"), storage.get(drive).filter { it.name == "__puus" }.map { it.value })
+        val unrelated = Url("https://example.com/")
+        storage.addCookie(unrelated, Cookie("session", "other-account"))
+        storage.clearDomain("quark.cn")
+        assertTrue(storage.get(drive).isEmpty())
+        assertEquals("other-account", storage.get(unrelated).single().value)
+    }
+
     @Test
     fun guestCookiesCannotBeSavedAndVerifiedCookiesReachTheDrive() = runBlocking {
         val state = MutableStateFlow<QuarkAccountEntity?>(QuarkAccountEntity(cookie = "previous-session"))

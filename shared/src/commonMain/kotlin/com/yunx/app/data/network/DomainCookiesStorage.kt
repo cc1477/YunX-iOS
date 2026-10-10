@@ -20,6 +20,7 @@ package com.yunx.app.data.network
 
 import io.ktor.client.plugins.cookies.*
 import io.ktor.http.*
+import io.ktor.util.date.GMTDate
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -29,6 +30,15 @@ class DomainCookiesStorage : CookiesStorage {
     private val domains = mutableMapOf<String, AcceptAllCookiesStorage>()
     override suspend fun addCookie(requestUrl: Url, cookie: Cookie) = mutex.withLock {
         val domain = (cookie.domain ?: requestUrl.host).trimStart('.').lowercase()
+        // Preserve AcceptAll's replacement semantics across our domain partitions: an explicit
+        // host login cookie must replace a matching parent-domain guest cookie (and vice versa).
+        domains.forEach { (existingDomain, storage) ->
+            if (existingDomain != domain) {
+                storage.get(requestUrl).firstOrNull { it.name == cookie.name }?.let { old ->
+                    storage.addCookie(requestUrl, old.copy(value = "", expires = GMTDate(0), maxAge = null))
+                }
+            }
+        }
         domains.getOrPut(domain) { AcceptAllCookiesStorage() }.addCookie(requestUrl, cookie)
     }
     override suspend fun get(requestUrl: Url): List<Cookie> = mutex.withLock {
