@@ -1,0 +1,65 @@
+name: Assisted YunX Quark simulator login
+on:
+  workflow_dispatch:
+    inputs:
+      code_ref:
+        required: true
+        type: string
+      simulator_asset_id:
+        required: true
+        type: string
+      simulator_sha256:
+        required: true
+        type: string
+      control_release:
+        required: true
+        type: string
+permissions:
+  contents: write
+jobs:
+  login:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: cc1477/YunX-iOS
+          ref: ${{ github.sha }}
+      - name: Download verified simulator app
+        env:
+          GH_TOKEN: ${{ github.token }}
+          YUNX_TEST_ASSET: ${{ inputs.simulator_asset_id }}
+          YUNX_TEST_SHA: ${{ inputs.simulator_sha256 }}
+        run: |
+          gh api "repos/cc1477/YunX-iOS/releases/assets/$YUNX_TEST_ASSET" -H 'Accept: application/octet-stream' > simulator.zip
+          python3 -c 'import hashlib,os;assert hashlib.sha256(open("simulator.zip","rb").read()).hexdigest()==os.environ["YUNX_TEST_SHA"]'
+          ditto -x -k simulator.zip simulator
+      - name: Prepare phone login
+        env:
+          SIMCTL_CHILD_YUNX_QUARK_PHONE: ${{ secrets.YUNX_QUARK_TEST_PHONE }}
+        run: >-
+          python3 iosApp/scripts/quark-login-simulator.py prepare --app simulator/YunX.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Quark-SMS-status
+          path: |
+            quark-login-test/ui-status.json
+            quark-login-test/input-public.pem
+          retention-days: 1
+      - name: Await encrypted SMS input and verify saved account and drive
+        env:
+          GH_TOKEN: ${{ github.token }}
+          YUNX_TEST_CONTROL_RELEASE: ${{ inputs.control_release }}
+          YUNX_TEST_CONTROL_REPO: cc1477/YunX-iOS
+        run: python3 iosApp/scripts/quark-login-simulator.py wait
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Quark-login-result
+          path: quark-login-test/result.json
+          if-no-files-found: ignore
+          retention-days: 1
+      - name: Delete simulator and account data
+        if: always()
+        run: python3 iosApp/scripts/quark-login-simulator.py cleanup
+

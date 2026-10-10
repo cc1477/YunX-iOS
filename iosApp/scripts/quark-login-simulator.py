@@ -66,13 +66,16 @@ def main():
     latest_asset = None
     next_control_check = 0
     release = os.environ.get("YUNX_TEST_CONTROL_RELEASE")
+    control_repo = os.environ.get("YUNX_TEST_CONTROL_REPO", "cc1477/gametool")
+    if control_repo not in ("cc1477/gametool", "cc1477/YunX-iOS"):
+        raise RuntimeError("Unsupported test control repository")
     while time.monotonic() < deadline:
         if release and time.monotonic() >= next_control_check:
             next_control_check = time.monotonic() + 10
-            assets = json.loads(subprocess.check_output(["gh", "api", "repos/cc1477/gametool/releases/" + release + "/assets"]))
+            assets = json.loads(subprocess.check_output(["gh", "api", "repos/" + control_repo + "/releases/" + release + "/assets"]))
             asset = next((a for a in assets if a["name"] == "quark-login-code.enc"), None)
             if asset and asset["id"] != latest_asset:
-                ciphertext = subprocess.check_output(["gh", "api", "repos/cc1477/gametool/releases/assets/" + str(asset["id"]),
+                ciphertext = subprocess.check_output(["gh", "api", "repos/" + control_repo + "/releases/assets/" + str(asset["id"]),
                                                      "-H", "Accept: application/octet-stream"])
                 decrypted = subprocess.run(["openssl", "pkeyutl", "-decrypt", "-inkey", ".quark-input-private.pem",
                     "-pkeyopt", "rsa_padding_mode:oaep", "-pkeyopt", "rsa_oaep_md:sha256"],
