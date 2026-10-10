@@ -20,20 +20,8 @@ kotlin {
         target.binaries.framework {
             baseName = "shared"
             isStatic = false
-            // Kotlin/Native exports must also be declared as api in commonMain.
-            // Keep transitive export off to avoid exposing the entire dependency graph.
+            // Swift uses our UIKit/lifecycle bridges; dependency APIs stay inside Kotlin.
             transitiveExport = false
-            export(compose.runtime)
-            export(compose.foundation)
-            export(compose.material3)
-            export(compose.ui)
-            export(libs.compose.material.icons.core)
-            export(libs.coroutines.core)
-            export(libs.kotlinx.serialization.json)
-            export(libs.ktor.client.core)
-            export(libs.ktor.client.content.negotiation)
-            export(libs.ktor.client.logging)
-            export(libs.ktor.serialization.kotlinx.json)
         }
     }
 
@@ -90,4 +78,6 @@ sqldelight {
 tasks.withType<Test>().configureEach {
     // UI rendering must never open a developer's accounts or download database.
     systemProperty("user.home", layout.buildDirectory.dir("ui-test-home").get().asFile.absolutePath)
+    // Include Compose renders when CI restores a successful test task from the build cache.
+    outputs.dir(layout.buildDirectory.dir("ui-layout"))
 }

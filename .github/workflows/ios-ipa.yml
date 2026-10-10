@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['.github/workflows/ios-ipa.yml', 'shared/**', 'iosApp/**']
+    paths: ['.github/workflows/ios-ipa.yml', 'shared/**', 'iosApp/**', 'gradle/**', 'gradle.properties', 'build.gradle.kts', 'settings.gradle.kts', 'gradlew', 'gradlew.bat']
 
 permissions:
   contents: read
@@ -35,10 +35,14 @@ jobs:
           xcodebuild -version | awk 'NR == 2 { print "build=" $3 }' >> "$GITHUB_OUTPUT"
 
       - name: Restore Kotlin Native caches
+        id: konan_cache
         uses: actions/cache/restore@v4
         with:
           path: ~/.konan
-          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-${{ hashFiles('gradle/libs.versions.toml', 'shared/build.gradle.kts') }}
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-iosArm64-v2-${{ hashFiles('gradle/libs.versions.toml', 'shared/build.gradle.kts') }}
+          restore-keys: |
+            konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-iosArm64-v2-
+            konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-
 
       - uses: gradle/actions/setup-gradle@v4
 
@@ -46,6 +50,7 @@ jobs:
         run: ./gradlew :shared:jvmTest --console=plain
 
       - name: Build Debug for iPhone without signing
+        id: ios_build
         run: >
           xcodebuild -project iosApp/iosApp.xcodeproj -scheme YunX
           -configuration Debug -sdk iphoneos
@@ -53,6 +58,13 @@ jobs:
           -derivedDataPath iosApp/build-device
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
           CODE_SIGN_IDENTITY="" build
+
+      - name: Save device Kotlin Native caches
+        if: always() && steps.konan_cache.outputs.cache-hit != 'true' && steps.ios_build.outcome != 'skipped'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.konan
+          key: ${{ steps.konan_cache.outputs.cache-primary-key }}
 
       - name: Verify device application and package IPA
         working-directory: iosApp/build-device

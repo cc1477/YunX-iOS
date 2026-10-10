@@ -100,11 +100,12 @@ class QuarkAccountRepository(
      */
     suspend fun saveQuarkAccount(cookie: String): Boolean {
         if (!QuarkConstants.isValidCookie(cookie)) return false
-        val nickname = api.fetchNickname(cookie) ?: "夸克用户"
+        val verifiedCookie = api.validateCookie(cookie) ?: return false
+        val nickname = api.fetchNickname(verifiedCookie) ?: "夸克用户"
         dao.upsert(
             QuarkAccountEntity(
                 id = "quark",
-                cookie = cookie,
+                cookie = verifiedCookie,
                 nickname = nickname
             )
         )

@@ -36,17 +36,19 @@ import kotlinx.coroutines.launch
 internal fun CookieLoginScreen(
     title: String, url: String, onBack: () -> Unit, onSaved: () -> Unit,
     credentialLabel: String = "Cookie", loginDomains: List<String> = loginCookieDomains(url),
-    webTokenKey: String? = null, validateAndSave: suspend (String) -> Boolean
+    webTokenKey: String? = null, cookieIsPlausible: ((String) -> Boolean)? = null,
+    validateAndSave: suspend (String) -> Boolean
 ) {
     var credential by remember(url) { mutableStateOf("") }
+    var manualCredential by remember(url) { mutableStateOf(false) }
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    if (webTokenKey != null) rememberWebLoginAutoDetect(
+    if (webTokenKey != null || cookieIsPlausible != null) rememberWebLoginAutoDetect(
         sampleCredential = { credential },
-        isPlausible = { normalizeWebLoginToken(it) != null },
+        isPlausible = { cookieIsPlausible?.invoke(it) ?: (normalizeWebLoginToken(it) != null) },
         validateAndSave = validateAndSave,
-        isPaused = { saving },
+        isPaused = { saving || manualCredential },
         onInFlightChange = { saving = it },
         onAutoSaved = onSaved
     )
@@ -63,7 +65,7 @@ internal fun CookieLoginScreen(
         Column(Modifier.fillMaxWidth().heightIn(max = formMaxHeight).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("在网页完成登录后保存，或手动粘贴 $credentialLabel。凭证仅保存在本机。")
-            OutlinedTextField(value = credential, onValueChange = { credential = it; error = null },
+            OutlinedTextField(value = credential, onValueChange = { credential = it; manualCredential = it.isNotBlank(); error = null },
                 label = { Text(credentialLabel) }, modifier = Modifier.fillMaxWidth(), enabled = !saving,
                 minLines = 1, maxLines = 3, isError = error != null)
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -81,10 +83,10 @@ internal fun CookieLoginScreen(
         }
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 CompositionLocalProvider(LocalWebLoginTokenReader provides webTokenKey?.let { key ->
-                    WebLoginTokenReader(key) { token -> if (!saving) credential = token }
+                    WebLoginTokenReader(key) { token -> if (!manualCredential) credential = token }
                 }) {
                 CookieLoginWebView(url, loginDomains) { cookies ->
-                    if (!saving && credentialLabel == "Cookie") credential = cookies.entries.joinToString("; ") { "${it.key}=${it.value}" }
+                    if (!manualCredential && credentialLabel == "Cookie") credential = cookies.entries.joinToString("; ") { "${it.key}=${it.value}" }
                 }
                 }
             }

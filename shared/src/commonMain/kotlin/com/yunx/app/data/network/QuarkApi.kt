@@ -106,6 +106,22 @@ class QuarkApi(
 
     // ---------- 账号 ----------
 
+    /** Verify the same authenticated endpoint used by the drive tab, and retain rotated cookies. */
+    suspend fun validateCookie(cookie: String): String? = withContext(Dispatchers.Default) {
+        val request = get("${QuarkConstants.CLOUD_FILE_SORT_URL}&pdir_fid=0&_page=1&_size=1", cookie)
+            .withHeader("Origin", "https://pan.quark.cn")
+            .withHeader("Referer", QuarkConstants.DOWNLOAD_REFERER)
+        try {
+            val response = client.executeRequest(request)
+            val json = parseJsonObject(response.bodyAsText())
+            if (!response.status.isSuccess() || json.optInt("status") != 200 || json.optJsonObject("data") == null) return@withContext null
+            // A login attempt must not publish Cookie updates into a previously saved account.
+            QuarkCookieUtil.mergeFromSetCookies(cookie, response.headers.getAll("Set-Cookie").orEmpty())
+                .takeIf(QuarkConstants::isValidCookie)
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+        catch (e: Exception) { null }
+    }
+
     suspend fun fetchNickname(cookie: String): String? = withContext(Dispatchers.Default) {
         val request = HttpRequestBuilder()
             .withUrl(QuarkConstants.ACCOUNT_INFO_URL)
@@ -741,7 +757,9 @@ class QuarkApi(
         }
         if (json.optInt("status") != 200) {
             // 透传服务端 message，如「提取码错误」「分享已失效」等
-            throw QuarkApiException(json.optString("message").ifBlank { "请求失败" })
+            val message = json.optString("message").ifBlank { "请求失败" }
+            throw QuarkApiException(if (message.contains("require login", ignoreCase = true))
+                "夸克登录已失效，请返回账号页重新登录" else message)
         }
         return parser(json.optJsonObject("data") ?: throw QuarkApiException("响应缺少 data"))
     }

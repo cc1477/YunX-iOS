@@ -22,5 +22,6 @@ import com.yunx.app.data.network.QuarkConstants
 import com.yunx.app.ui.viewmodel.QuarkAccountViewModel
 @Composable
 fun QuarkLoginScreen(viewModel: QuarkAccountViewModel, onBack: () -> Unit, onSaved: () -> Unit) {
-    CookieLoginScreen("夸克登录", QuarkConstants.LOGIN_URL, onBack, onSaved, validateAndSave = { viewModel.saveQuarkAccount(it) })
+    CookieLoginScreen("夸克登录", QuarkConstants.LOGIN_URL, onBack, onSaved,
+        cookieIsPlausible = QuarkConstants::isValidCookie, validateAndSave = { viewModel.saveQuarkAccount(it) })
 }

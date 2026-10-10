@@ -40,18 +40,24 @@ actual fun CookieLoginWebView(url: String, onCookies: (Map<String, String>) -> U
         (explicitDomains.ifEmpty { loginCookieDomains(url) })
             .map { it.trim().removePrefix(".").lowercase() }.filter { it.isNotEmpty() }
     }
-    val delegate = remember(url, domains) { object : NSObject(), WKNavigationDelegateProtocol {
+    val cookieStore = remember(url) { WKWebsiteDataStore.defaultDataStore().httpCookieStore }
+    val cookieObserver = remember(url, domains) { object : NSObject(), WKHTTPCookieStoreObserverProtocol {
+        var active = false
+        fun readCookies() {
+            if (!active) return
+            cookieStore.getAllCookies { cookies ->
+                val scoped = cookies.orEmpty().filterIsInstance<NSHTTPCookie>().filter { cookie ->
+                    isLoginHost(cookie.domain.removePrefix("."), domains)
+                }.associate { it.name to it.value }
+                NSOperationQueue.mainQueue.addOperationWithBlock { if (active) callback.value(scoped) }
+            }
+        }
+        override fun cookiesDidChangeInCookieStore(cookieStore: WKHTTPCookieStore) { readCookies() }
+    } }
+    val delegate = remember(url, domains, cookieObserver) { object : NSObject(), WKNavigationDelegateProtocol {
         override fun webView(webView: WKWebView, didFinishNavigation: WKNavigation?) {
             DiagnosticWebViewClient.navigationCompleted(webView.URL?.host.orEmpty())
-            // Read the WebKit jar after every didFinish, including SSO redirects. Domain boundaries
-            // come from the caller, never from the redirect host or a naive last-two-label heuristic.
-            WKWebsiteDataStore.defaultDataStore().httpCookieStore.getAllCookies { cookies ->
-                val scoped = cookies.orEmpty().filterIsInstance<NSHTTPCookie>().filter { cookie ->
-                    val domain = cookie.domain.removePrefix(".").lowercase()
-                    domains.any { domain == it || domain.endsWith(".$it") }
-                }.associate { it.name to it.value }
-                NSOperationQueue.mainQueue.addOperationWithBlock { callback.value(scoped) }
-            }
+            cookieObserver.readCookies()
         }
         override fun webView(webView: WKWebView, decidePolicyForNavigationAction: WKNavigationAction,
             decisionHandler: (WKNavigationActionPolicy) -> Unit) {
@@ -86,8 +92,17 @@ actual fun CookieLoginWebView(url: String, onCookies: (Map<String, String>) -> U
             delay(1500)
         }
     }
-    DisposableEffect(webView) {
-        onDispose { webView.stopLoading(); webView.navigationDelegate = null }
+    DisposableEffect(webView, cookieObserver) {
+        // SPA/QR login can update HttpOnly cookies without finishing a navigation.
+        cookieObserver.active = true
+        cookieStore.addObserver(cookieObserver)
+        cookieObserver.readCookies()
+        onDispose {
+            cookieObserver.active = false
+            cookieStore.removeObserver(cookieObserver)
+            webView.stopLoading()
+            webView.navigationDelegate = null
+        }
     }
     UIKitViewController(factory = { controller }, modifier = Modifier.fillMaxSize())
 }

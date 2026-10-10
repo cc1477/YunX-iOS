@@ -3,7 +3,12 @@ name: iOS build
 on:
   push:
     branches: [main]
+    paths: ['.github/workflows/ios-build.yml', 'shared/**', 'iosApp/**', 'gradle/**', 'gradle.properties', 'build.gradle.kts', 'settings.gradle.kts', 'gradlew', 'gradlew.bat']
   workflow_dispatch:
+
+concurrency:
+  group: yunx-ios-simulator-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -29,7 +34,10 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ~/.konan
-          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-${{ hashFiles('gradle/libs.versions.toml', 'shared/build.gradle.kts') }}
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-iosSimulatorArm64-v2-${{ hashFiles('gradle/libs.versions.toml', 'shared/build.gradle.kts') }}
+          restore-keys: |
+            konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-iosSimulatorArm64-v2-
+            konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.build }}-
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4

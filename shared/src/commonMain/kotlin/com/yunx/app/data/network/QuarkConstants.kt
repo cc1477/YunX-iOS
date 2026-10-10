@@ -105,6 +105,9 @@ object QuarkConstants {
     const val PUUS_REFRESH_INTERVAL_MS = 90L * 60 * 1000
 
     /** 关键 Cookie 字段，缺失则视为未登录 */
-    fun isValidCookie(cookie: String?): Boolean =
-        cookie != null && cookie.contains("__pus=") && cookie.contains("__puus=")
+    fun isValidCookie(cookie: String?): Boolean {
+        if (cookie.isNullOrBlank() || cookie.any { it.code < 32 || it.code == 127 }) return false
+        val fields = cookie.split(';').map { it.trim().substringBefore('=') to it.trim().substringAfter('=', "") }.toMap()
+        return !fields["__pus"].isNullOrBlank() && !fields["__puus"].isNullOrBlank()
+    }
 }
