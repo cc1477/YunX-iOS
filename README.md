@@ -8,9 +8,9 @@ Kotlin Multiplatform（KMP）共享业务代码与 Compose Multiplatform（CMP�
 
 [打开 Cloudflare LCSign 测试分发页](https://yunx-lcsign-cc1477.pages.dev/)，可直接导入 LCSign 或手动下载未签名 IPA，无需登录 GitHub。IPA 保存在 Cloudflare R2，并通过 Pages 下载入口的边缘缓存分发。页面显示包内版本、构建号、构建提交及 SHA256，导入后选择自己的证书签名安装。
 
-当前测试包为 **0.1.1（6）**。已补齐 123 扫码登录的 Token 提取、自动校验保存，以及蓝奏下载签名与节点会话传递；详情见 [登录与下载修复验证](LOGIN-DOWNLOAD-FIX.md)。本地及 macOS 共享回归测试均为 11 项通过，包含安全区、大字号与窄屏布局检查；本轮生成 79 张 Compose JVM 渲染截图。设置页“获取最新 iOS 版本”直接打开分发页。
+当前测试包为 **0.1.1（8）**。已补齐 123 扫码 Token 提取和蓝奏下载会话，修复夸克 Cookie 更新、游客凭证误存与父域／子域 Cookie 冲突；详情见 [夸克登录与构建速度](QUARK-LOGIN-FIX.md) 及 [123 与蓝奏修复记录](LOGIN-DOWNLOAD-FIX.md)。本地及 macOS 共享检查均为 13 项通过，本轮生成 79 张 Compose JVM 渲染截图。设置页“获取最新 iOS 版本”直接打开分发页。
 
-[设备包编译与分发部署](https://github.com/cc1477/YunX-iOS/actions/runs/38009990656)和[共享测试、模拟器构建及启动检查](https://github.com/cc1477/YunX-iOS/actions/runs/38009990737)均已通过。线上 IPA 已重新下载核对版本、构建号、包名及 SHA256；[本次模拟器启动截图产物](https://github.com/cc1477/YunX-iOS/actions/runs/38009990737/artifacts/11653266001)保留 7 天。首页与大字号深色的原生截图同时保存在 [适配验证文档](UI-ADAPTATION.md)。
+[设备包编译与分发部署](https://github.com/cc1477/YunX-iOS/actions/runs/38027669664)和[共享测试、模拟器构建及启动检查](https://github.com/cc1477/YunX-iOS/actions/runs/38027669674)均已通过。线上 IPA 已重新下载核对版本、构建号、包名及 SHA256；[本次模拟器启动截图产物](https://github.com/cc1477/YunX-iOS/actions/runs/38027669674/artifacts/11660808831)保留 7 天。此前系统字号与深色模式适配的原生截图保存在 [适配验证文档](UI-ADAPTATION.md)。
 
 这是 Debug 配置的 iPhone arm64 IPA，最低 iOS 15.0，bundle ID 为 `com.yunx.app.ios`。已核验 `Payload/YunX.app`、主程序与动态库的真机平台标记；不含代码签名或描述文件，需要自行签名后安装。真机运行、登录与下载尚未验证。首次 Release 构建因 Kotlin/Native 优化阶段的 Java heap space 失败，改用 Debug 后[构建和打包通过](https://github.com/cc1477/YunX-iOS/actions/runs/37919720624)。
 

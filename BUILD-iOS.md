@@ -2,7 +2,7 @@
 
 返回 [README](README.md)；移植历史与未验证项见 [PORTING-NOTES](PORTING-NOTES.md)。
 
-2026-10-10 的 0.1.1（6）已通过本地及 GitHub macOS 的 11 项共享测试、Debug arm64 真机 IPA 编译和模拟器启动检查。首次启动进入解析页，原生截图验证系统字号切换与深色模式。构建产物及验证范围见 [UI-ADAPTATION.md](UI-ADAPTATION.md) 与 [登录下载修复](LOGIN-DOWNLOAD-FIX.md)。IPA 需自行签名，真机运行与 Release 构建仍待验证。
+2026-10-10 的 0.1.1（8）已通过本地及 GitHub macOS 的 13 项共享测试、Debug arm64 真机 IPA 编译和模拟器启动检查。首次启动进入解析页，原生截图验证系统字号切换与深色模式。构建产物及验证范围见 [UI-ADAPTATION.md](UI-ADAPTATION.md) 与 [夸克登录及构建速度](QUARK-LOGIN-FIX.md)。IPA 需自行签名，真机运行与 Release 构建仍待验证。
 
 ## 先了解平台限制
 
@@ -197,3 +197,7 @@ maven { url = uri("https://maven.aliyun.com/repository/public") }
 ### 登录、后台任务与文件导出“构建成功却不能用”
 
 这些属于运行验证，不能用编译成功替代。先按本文平台限制检查任务是否符合后台接管规则，登录 Cookie 是否在允许域且经过业务校验；网盘接口、链接有效期和验证码行为仍受服务端影响。文件打开仍是 `file://` opener，原生分享/选择未完成；请不要据此假定可以像 Android 一样导出任意文件或目录。
+
+## 构建缓存与 Swift 导出
+
+当前开启 `org.gradle.caching=true`，渲染截图作为测试输出参与缓存。真机与模拟器分别保存 Native 缓存，Xcode 版本和依赖配置参与缓存键。Swift 使用本模块的 UIKit／生命周期桥接，不再显式导出 Compose、Ktor 等完整依赖模块。实测与验证边界见 [夸克登录及构建速度](QUARK-LOGIN-FIX.md)。
