@@ -5,7 +5,12 @@ import shared
 struct ComposeView: UIViewControllerRepresentable {
     @Environment(\.sizeCategory) private var sizeCategory
     func makeUIViewController(context: Context) -> UIViewController {
-        MainViewControllerKt.MainViewController()
+        #if targetEnvironment(simulator)
+        if ProcessInfo.processInfo.arguments.contains("--quark-login-test") {
+            return QuarkLoginTestViewControllerKt.QuarkLoginTestViewController()
+        }
+        #endif
+        return MainViewControllerKt.MainViewController()
     }
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {

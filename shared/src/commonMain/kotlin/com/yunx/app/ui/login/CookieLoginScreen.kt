@@ -37,6 +37,7 @@ internal fun CookieLoginScreen(
     title: String, url: String, onBack: () -> Unit, onSaved: () -> Unit,
     credentialLabel: String = "Cookie", loginDomains: List<String> = loginCookieDomains(url),
     webTokenKey: String? = null, cookieIsPlausible: ((String) -> Boolean)? = null,
+    hideCredential: Boolean = false, onCredentialObserved: (String) -> Unit = {},
     validateAndSave: suspend (String) -> Boolean
 ) {
     var credential by remember(url) { mutableStateOf("") }
@@ -67,7 +68,9 @@ internal fun CookieLoginScreen(
             Text("在网页完成登录后保存，或手动粘贴 $credentialLabel。凭证仅保存在本机。")
             OutlinedTextField(value = credential, onValueChange = { credential = it; manualCredential = it.isNotBlank(); error = null },
                 label = { Text(credentialLabel) }, modifier = Modifier.fillMaxWidth(), enabled = !saving,
-                minLines = 1, maxLines = 3, isError = error != null)
+                minLines = 1, maxLines = 3, isError = error != null,
+                visualTransformation = if (hideCredential) androidx.compose.ui.text.input.PasswordVisualTransformation()
+                    else androidx.compose.ui.text.input.VisualTransformation.None)
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Button(enabled = !saving && credential.isNotBlank(), onClick = {
                 saving = true
@@ -86,7 +89,10 @@ internal fun CookieLoginScreen(
                     WebLoginTokenReader(key) { token -> if (!manualCredential) credential = token }
                 }) {
                 CookieLoginWebView(url, loginDomains) { cookies ->
-                    if (!manualCredential && credentialLabel == "Cookie") credential = cookies.entries.joinToString("; ") { "${it.key}=${it.value}" }
+                    if (!manualCredential && credentialLabel == "Cookie") {
+                        credential = cookies.entries.joinToString("; ") { "${it.key}=${it.value}" }
+                        onCredentialObserved(credential)
+                    }
                 }
                 }
             }
