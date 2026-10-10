@@ -2,7 +2,7 @@
 
 返回 [README](README.md)；移植历史与未验证项见 [PORTING-NOTES](PORTING-NOTES.md)。
 
-2026-10-10 的 0.1.1（5）已通过本地及 GitHub macOS 的 8 项共享测试、Debug arm64 真机 IPA 编译和模拟器启动检查。首次启动进入解析页，原生截图验证系统字号切换与深色模式。构建产物及验证范围见 [UI-ADAPTATION.md](UI-ADAPTATION.md)。IPA 需自行签名，真机运行与 Release 构建仍待验证。
+2026-10-10 的 0.1.1（6）已通过本地及 GitHub macOS 的 11 项共享测试、Debug arm64 真机 IPA 编译和模拟器启动检查。首次启动进入解析页，原生截图验证系统字号切换与深色模式。构建产物及验证范围见 [UI-ADAPTATION.md](UI-ADAPTATION.md) 与 [登录下载修复](LOGIN-DOWNLOAD-FIX.md)。IPA 需自行签名，真机运行与 Release 构建仍待验证。
 
 ## 先了解平台限制
 
