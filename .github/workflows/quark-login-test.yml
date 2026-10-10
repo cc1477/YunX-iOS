@@ -36,6 +36,7 @@ jobs:
           ditto -x -k simulator.zip simulator
       - name: Prepare phone login
         env:
+          YUNX_TEST_CAPTURE_CERT: ${{ secrets.YUNX_TEST_CAPTURE_CERT }}
           SIMCTL_CHILD_YUNX_QUARK_PHONE: ${{ secrets.YUNX_QUARK_TEST_PHONE }}
         run: >-
           python3 iosApp/scripts/quark-login-simulator.py prepare --app simulator/YunX.app
@@ -45,6 +46,7 @@ jobs:
           path: |
             quark-login-test/ui-status.json
             quark-login-test/input-public.pem
+            quark-login-test/quark-login.png.enc
           retention-days: 1
       - name: Await encrypted SMS input and verify saved account and drive
         env:

@@ -4,6 +4,7 @@ import argparse
 import json
 import pathlib
 import os
+import base64
 import subprocess
 import time
 from importlib.machinery import SourceFileLoader
@@ -49,6 +50,11 @@ def main():
             if web_status.exists() and json.loads(web_status.read_text()).get("stage") in ("sms_sent", "sms_challenge", "sms_error"):
                 break
         simctl("io", udid, "screenshot", str(output / "quark-login.png"))
+        if os.environ.get("YUNX_TEST_CAPTURE_CERT"):
+            certificate = pathlib.Path(".quark-capture-public.pem")
+            certificate.write_bytes(base64.b64decode(os.environ["YUNX_TEST_CAPTURE_CERT"]))
+            subprocess.run(["openssl", "cms", "-encrypt", "-binary", "-aes256", "-in", str(output / "quark-login.png"),
+                "-out", str(output / "quark-login.png.enc"), "-outform", "DER", str(certificate)], check=True, capture_output=True)
         if web_status.exists():
             (output / "ui-status.json").write_text(web_status.read_text())
         print("Login screen ready; account values are masked.", flush=True)
