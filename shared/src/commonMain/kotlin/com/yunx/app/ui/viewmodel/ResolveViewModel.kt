@@ -1784,7 +1784,7 @@ class ResolveViewModel(
                 mapOf(
                     "User-Agent" to LanzouConstants.WEB_UA,
                     "Referer" to "$lanzouOrigin/",
-                    "Cookie" to LanzouConstants.DOWN_IP_COOKIE
+                    "Cookie" to link.guestCookie.ifBlank { LanzouConstants.DOWN_IP_COOKIE }
                 )
             }
             // UC：OSS 直链按 Referer 档位限速（缺 Referer 被 Callback 限到 ~100 KB/s），

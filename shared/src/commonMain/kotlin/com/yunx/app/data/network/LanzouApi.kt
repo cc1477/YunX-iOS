@@ -509,7 +509,7 @@ class LanzouApi(
             // 下载接口可能在同源，也可能在 apifile.woozooo.com（新版页面用 domain1/domain2 给出完整 URL）
             val ajaxUrl = resolveAjaxUrl(html, origin, fileId, withPwd)
             // 新版页面签名变量为 wp_sign（旧版为 sign）
-            val sign = jsVar(html, "wp_sign") ?: jsVar(html, "sign") ?: inputValue(html, "sign")
+            val sign = lanzouDownloadSign(html) ?: inputValue(html, "sign")
                 ?: throw IllegalStateException("蓝奏分享页缺少下载参数，请重新解析")
             val ajaxData = jsVar(html, "ajaxdata")
             val kd = jsVarRaw(html, "kdns") ?: "1"
@@ -543,7 +543,8 @@ class LanzouApi(
                 fid = file.fid,
                 filename = file.fname.ifBlank { ajaxJson.optString("inf") },
                 downloadUrl = finalUrl,
-                size = size
+                size = size,
+                guestCookie = mergedCookie(hostOf(finalUrl), LanzouConstants.DOWN_IP_COOKIE)
             )
         }
 
@@ -600,12 +601,15 @@ class LanzouApi(
                         if (challenge != null) {
                             if (!challenges.add(host)) throw IllegalStateException("蓝奏需要进一步验证，请在分享页完成验证后重试")
                             setCookie(host, "acw_sc__v2", challenge)
+                            // A cookie retry of this address is not a redirect cycle.
+                            visited.remove(url)
                             return@repeat
                         }
                         if (body.contains("验证并下载")) {
                             if (confirmedHosts.add(host)) {
                                 val verified = submitVerify(url, body, shareOrigin)
                                 if (verified != null) {
+                                    visited.remove(url)
                                     url = verified
                                     return@repeat
                                 }
@@ -998,4 +1002,21 @@ class LanzouApi(
 
     private fun firstNonBlank(vararg values: String): String =
         values.firstOrNull { !it.isNullOrBlank() }?.trim().orEmpty()
+}
+
+/** Read the variable referenced by the actual download form; no page JavaScript is executed. */
+internal fun lanzouDownloadSign(html: String): String? {
+    val source = html.lineSequence().filterNot { it.trimStart().startsWith("//") }.joinToString("\n")
+    fun variable(name: String): String? =
+        Regex("""\b${Regex.escape(name)}\s*=\s*['"]([^'"]*)['"]""").findAll(source)
+            .lastOrNull()?.groupValues?.get(1)?.takeIf { it.isNotBlank() }
+    val data = Regex("""\bdata\s*:\s*\{([^{}]*)\}""", RegexOption.DOT_MATCHES_ALL)
+        .findAll(source).map { it.groupValues[1] }.firstOrNull { it.contains("downprocess") }
+    val sign = data?.let {
+        Regex("""(?:['"]sign['"]|\bsign)\s*:\s*(?:['"]([^'"]+)['"]|([A-Za-z_$][A-Za-z0-9_$]*))""")
+            .find(it)
+    }
+    return sign?.groupValues?.get(1)?.takeIf { it.isNotBlank() }
+        ?: sign?.groupValues?.get(2)?.takeIf { it.isNotBlank() }?.let(::variable)
+        ?: variable("wp_sign") ?: variable("sign")
 }

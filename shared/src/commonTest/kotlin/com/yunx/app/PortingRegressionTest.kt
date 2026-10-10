@@ -2,13 +2,44 @@ package com.yunx.app
 
 import com.yunx.app.data.network.XunleiKouling
 import com.yunx.app.data.network.resolveUrl
+import com.yunx.app.data.network.lanzouDownloadSign
+import com.yunx.app.ui.login.isLoginHost
+import com.yunx.app.ui.login.normalizeWebLoginToken
+import com.yunx.app.ui.login.webLoginTokenScript
 import com.yunx.app.data.update.UpdateChecker
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.test.assertNull
 
 class PortingRegressionTest {
+    @Test
+    fun webLoginTokenStaysScopedAndHandlesStoredJsonStrings() {
+        assertTrue(isLoginHost("yun.123pan.cn", listOf("123pan.cn")))
+        assertFalse(isLoginHost("123pan.cn.other.example", listOf("123pan.cn")))
+        assertFalse(isLoginHost("other123pan.cn", listOf("123pan.cn")))
+        assertEquals("example.jwt.token", normalizeWebLoginToken("\"example.jwt.token\""))
+        assertEquals("example.jwt.token", normalizeWebLoginToken("example.jwt.token"))
+        assertNull(normalizeWebLoginToken(""))
+        assertNull(normalizeWebLoginToken("token\nheader"))
+        assertTrue(webLoginTokenScript("authorToken").contains("localStorage.getItem(\"authorToken\")"))
+    }
+
+    @Test
+    fun lanzouReadsRotatingSignVariableAndItsFinalAssignment() {
+        val html = """
+            var isngis = '';
+            var isngis = 'current-download-sign';
+            // data: { 'action':'downprocess', 'sign':old_sign }
+            data: { 'action':'downprocess', 'sign':isngis, 'p':pwd }
+        """.trimIndent()
+        assertEquals("current-download-sign", lanzouDownloadSign(html))
+        assertEquals("literal-sign", lanzouDownloadSign("data: {'action':'downprocess', 'sign':'literal-sign'}"))
+        assertEquals("legacy-sign", lanzouDownloadSign("var wp_sign = 'legacy-sign';"))
+        assertNull(lanzouDownloadSign("var isngis = ''; data: {'action':'downprocess', 'sign':isngis}"))
+    }
+
     @Test
     fun chineseKoulingIsRecognizedWithoutCallingTheNetwork() {
         assertTrue(XunleiKouling.looksLikeKouling("「张三丰资源123」"))

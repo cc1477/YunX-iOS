@@ -26,6 +26,23 @@ expect fun CookieLoginWebView(url: String, onCookies: (Map<String, String>) -> U
 
 /** Explicit domain scope without changing the existing two-argument expect/JVM ABI. */
 internal val LocalCookieLoginDomains = androidx.compose.runtime.staticCompositionLocalOf<List<String>> { emptyList() }
+internal data class WebLoginTokenReader(val key: String, val onToken: (String) -> Unit)
+internal val LocalWebLoginTokenReader = androidx.compose.runtime.staticCompositionLocalOf<WebLoginTokenReader?> { null }
+
+internal fun isLoginHost(host: String, domains: List<String>): Boolean =
+    domains.any { host.equals(it, true) || host.lowercase().endsWith(".${it.lowercase()}") }
+
+internal fun webLoginTokenScript(key: String): String =
+    "(() => { try { return localStorage.getItem(${kotlinx.serialization.json.JsonPrimitive(key)}) || ''; } catch (_) { return ''; } })()"
+
+internal fun normalizeWebLoginToken(raw: String): String? {
+    val value = raw.trim()
+    if (value.isEmpty()) return null
+    val token = if (value.startsWith('"')) runCatching {
+        (kotlinx.serialization.json.Json.parseToJsonElement(value) as? kotlinx.serialization.json.JsonPrimitive)?.content
+    }.getOrNull() ?: return null else value
+    return token.takeIf { it.isNotBlank() && it.length <= 16384 && it.none { c -> c.code < 32 || c.code == 127 } }
+}
 
 internal fun loginCookieDomains(url: String): List<String> {
     val host = runCatching { io.ktor.http.Url(url).host.lowercase() }.getOrDefault("")

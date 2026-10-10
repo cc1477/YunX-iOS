@@ -24,6 +24,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.interop.UIKitViewController
 import kotlinx.cinterop.cValue
+import kotlinx.coroutines.delay
 import platform.Foundation.*
 import platform.UIKit.UIViewController
 import platform.WebKit.*
@@ -33,6 +34,7 @@ import platform.darwin.NSObject
 @Composable
 actual fun CookieLoginWebView(url: String, onCookies: (Map<String, String>) -> Unit) {
     val callback = rememberUpdatedState(onCookies)
+    val tokenReader = rememberUpdatedState(LocalWebLoginTokenReader.current)
     val explicitDomains = LocalCookieLoginDomains.current
     val domains = remember(url, explicitDomains) {
         (explicitDomains.ifEmpty { loginCookieDomains(url) })
@@ -69,6 +71,21 @@ actual fun CookieLoginWebView(url: String, onCookies: (Map<String, String>) -> U
         }
     }
     val controller = remember(webView) { UIViewController().apply { view = webView } }
+    // QR login updates localStorage in the same SPA document without a navigation callback.
+    LaunchedEffect(webView) {
+        while (true) {
+            val reader = tokenReader.value
+            val host = webView.URL?.host.orEmpty()
+            if (reader != null && webView.URL?.scheme == "https" && isLoginHost(host, domains)) {
+                webView.evaluateJavaScript(webLoginTokenScript(reader.key)) { result, error ->
+                    if (error == null && isLoginHost(webView.URL?.host.orEmpty(), domains)) {
+                        (result as? String)?.let(::normalizeWebLoginToken)?.let { tokenReader.value?.onToken?.invoke(it) }
+                    }
+                }
+            }
+            delay(1500)
+        }
+    }
     DisposableEffect(webView) {
         onDispose { webView.stopLoading(); webView.navigationDelegate = null }
     }

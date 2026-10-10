@@ -85,7 +85,7 @@ data class DownloadLink(
     /** 是否为 HLS（m3u8）转码流地址：下载走 HLS 分片合并路径（UC play 绕过会员墙） */
     val isHls: Boolean = false,
     /**
-     * 游客（未登录）直链携带的游客态 Cookie（如夸克/UC 的 `__pugs=xxx`）。
+     * 匿名下载节点的会话 Cookie（如夸克/UC 的 `__pugs=xxx`、蓝奏下载节点 Cookie）。
      * 登录态直链为空串 —— 那时下载用登录 Cookie（见 ResolveViewModel.enqueueDownload）；
      * 游客态下登录 Cookie 不存在，只能靠这份令牌过 CDN 校验（缺了夸克返回 412、UC 返回 403）。
      */

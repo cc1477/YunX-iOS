@@ -35,12 +35,21 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun CookieLoginScreen(
     title: String, url: String, onBack: () -> Unit, onSaved: () -> Unit,
-    credentialLabel: String = "Cookie", loginDomains: List<String> = loginCookieDomains(url), validateAndSave: suspend (String) -> Boolean
+    credentialLabel: String = "Cookie", loginDomains: List<String> = loginCookieDomains(url),
+    webTokenKey: String? = null, validateAndSave: suspend (String) -> Boolean
 ) {
     var credential by remember(url) { mutableStateOf("") }
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    if (webTokenKey != null) rememberWebLoginAutoDetect(
+        sampleCredential = { credential },
+        isPlausible = { normalizeWebLoginToken(it) != null },
+        validateAndSave = validateAndSave,
+        isPaused = { saving },
+        onInFlightChange = { saving = it },
+        onAutoSaved = onSaved
+    )
     AppScaffold(topBar = {
         TopAppBar(title = { Text(title) }, navigationIcon = {
             IconButton(onClick = onBack, enabled = !saving) {
@@ -71,8 +80,12 @@ internal fun CookieLoginScreen(
             }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(if (saving) "正在校验…" else "保存登录") }
         }
             Box(Modifier.weight(1f).fillMaxWidth()) {
+                CompositionLocalProvider(LocalWebLoginTokenReader provides webTokenKey?.let { key ->
+                    WebLoginTokenReader(key) { token -> if (!saving) credential = token }
+                }) {
                 CookieLoginWebView(url, loginDomains) { cookies ->
                     if (!saving && credentialLabel == "Cookie") credential = cookies.entries.joinToString("; ") { "${it.key}=${it.value}" }
+                }
                 }
             }
         }

@@ -125,12 +125,12 @@ class LanzouCloudViewModel(
     private fun folderNumeric(fid: String): String = fid.removePrefix(LanzouConstants.FOLDER_PREFIX)
     private fun fileNumeric(fid: String): String = fid.removePrefix(LanzouConstants.FILE_PREFIX)
 
-    private fun downloadHeaders(url: String): Map<String, String> {
+    private fun downloadHeaders(url: String, nodeCookie: String): Map<String, String> {
         val origin = runCatching { Url(url) }.getOrNull()?.let { "${it.protocol.name}://${it.host}" } ?: "https://pan.lanzoui.com"
         return mapOf(
             "User-Agent" to LanzouConstants.WEB_UA,
             "Referer" to "$origin/",
-            "Cookie" to LanzouConstants.DOWN_IP_COOKIE
+            "Cookie" to nodeCookie.ifBlank { LanzouConstants.DOWN_IP_COOKIE }
         )
     }
 
@@ -269,7 +269,7 @@ class LanzouCloudViewModel(
                 fileName = fileName,
                 size = link.size,
                 platform = DownloadPlatform.LANZOU,
-                headers = downloadHeaders(link.downloadUrl)
+                headers = downloadHeaders(link.downloadUrl, link.guestCookie)
             )
             true
         }.getOrDefault(false)
@@ -318,7 +318,7 @@ class LanzouCloudViewModel(
                             fileName = relPath,
                             size = link.size,
                             platform = DownloadPlatform.LANZOU,
-                            headers = downloadHeaders(link.downloadUrl)
+                            headers = downloadHeaders(link.downloadUrl, link.guestCookie)
                         )
                         okCount++
                     }
@@ -351,7 +351,7 @@ class LanzouCloudViewModel(
                     url = link.downloadUrl,
                     fileName = file.fname.ifBlank { link.filename },
                     size = link.size,
-                    headers = downloadHeaders(link.downloadUrl)
+                    headers = downloadHeaders(link.downloadUrl, link.guestCookie)
                 )
                 downloadLink = link
             } catch (e: Exception) {
@@ -542,7 +542,7 @@ class LanzouCloudViewModel(
                             fileName = if (relPath.contains('/')) relPath else file.fname.ifBlank { link.filename },
                             size = link.size,
                             platform = DownloadPlatform.LANZOU,
-                            headers = downloadHeaders(link.downloadUrl)
+                            headers = downloadHeaders(link.downloadUrl, link.guestCookie)
                         )
                         okCount++
                     }

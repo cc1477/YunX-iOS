@@ -56,6 +56,7 @@ fun Pan123LoginScreen(viewModel: Pan123AccountViewModel, onBack: () -> Unit, onS
                 }) { Text(if (busy) "登录中…" else "登录") }
             }
         } else CookieLoginScreen("123 云盘登录", Pan123Constants.WEB_LOGIN_URL, onBack, onSaved,
-            credentialLabel = "Token", validateAndSave = { viewModel.saveToken(it) })
+            credentialLabel = "Token", webTokenKey = Pan123Constants.LOCAL_STORAGE_TOKEN_KEY,
+            validateAndSave = { viewModel.saveToken(it) })
     }
 }
