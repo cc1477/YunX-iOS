@@ -5,6 +5,11 @@ on:
     branches: [main]
     paths: ['.github/workflows/ios-build.yml', 'shared/**', 'iosApp/**', 'gradle/**', 'gradle.properties', 'build.gradle.kts', 'settings.gradle.kts', 'gradlew', 'gradlew.bat']
   workflow_dispatch:
+    inputs:
+      build_only:
+        description: Compile and package the simulator application for a separate account test
+        type: boolean
+        default: false
 
 concurrency:
   group: yunx-ios-simulator-${{ github.ref }}
@@ -46,10 +51,11 @@ jobs:
         run: ./gradlew --version
 
       - name: Test shared code
+        if: ${{ !inputs.build_only }}
         run: ./gradlew :shared:jvmTest --console=plain
 
       - name: Upload current shared test reports and Compose renders
-        if: always()
+        if: ${{ always() && !inputs.build_only }}
         uses: actions/upload-artifact@v4
         with:
           name: YunX-ui-validation
@@ -82,6 +88,7 @@ jobs:
           key: ${{ steps.konan_cache.outputs.cache-primary-key }}
 
       - name: Launch app in an iPhone simulator
+        if: ${{ !inputs.build_only }}
         run: >
           python3 iosApp/scripts/smoke-simulator.py
           iosApp/build/Build/Products/Debug-iphonesimulator/YunX.app

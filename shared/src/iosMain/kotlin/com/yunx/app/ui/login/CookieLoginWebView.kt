@@ -30,12 +30,16 @@ import platform.UIKit.UIViewController
 import platform.WebKit.*
 import platform.darwin.NSObject
 
+/** Simulator tests can configure their own WebKit controller; shipping screens use the default. */
+internal val LocalCookieLoginTestConfiguration = staticCompositionLocalOf<(WKWebViewConfiguration) -> Unit> { {} }
+
 /** Swift's existing UIViewControllerRepresentable hosts Compose; Compose hosts this child controller. */
 @Composable
 actual fun CookieLoginWebView(url: String, onCookies: (Map<String, String>) -> Unit) {
     val callback = rememberUpdatedState(onCookies)
     val tokenReader = rememberUpdatedState(LocalWebLoginTokenReader.current)
     val explicitDomains = LocalCookieLoginDomains.current
+    val testConfiguration = LocalCookieLoginTestConfiguration.current
     val domains = remember(url, explicitDomains) {
         (explicitDomains.ifEmpty { loginCookieDomains(url) })
             .map { it.trim().removePrefix(".").lowercase() }.filter { it.isNotEmpty() }
@@ -67,7 +71,7 @@ actual fun CookieLoginWebView(url: String, onCookies: (Map<String, String>) -> U
         }
     } }
     val webView = remember(url, delegate) {
-        WKWebView(frame = cValue { }, configuration = WKWebViewConfiguration()).apply {
+        WKWebView(frame = cValue { }, configuration = WKWebViewConfiguration().apply(testConfiguration)).apply {
             navigationDelegate = delegate
             // Match upstream desktop Chrome 131 UA. This changes the UA string only: WebKit stays
             // WebKit and cannot emulate Chromium client hints / all desktop login behavior.

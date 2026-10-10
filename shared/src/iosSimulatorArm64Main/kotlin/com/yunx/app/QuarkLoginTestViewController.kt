@@ -9,6 +9,7 @@ import com.yunx.app.data.network.QuarkApi
 import com.yunx.app.data.network.QuarkConstants
 import com.yunx.app.data.repository.QuarkAccountRepository
 import com.yunx.app.ui.login.CookieLoginScreen
+import com.yunx.app.ui.login.LocalCookieLoginTestConfiguration
 import com.yunx.app.ui.theme.ComposeEmptyActivityTheme
 import kotlinx.serialization.json.*
 import platform.Foundation.*
@@ -37,7 +38,8 @@ fun QuarkLoginTestViewController(): UIViewController = ComposeUIViewController {
     LaunchedEffect(Unit) { report("waiting_for_login") }
     ComposeEmptyActivityTheme {
         if (saved) Text("登录验证完成")
-        else CookieLoginScreen("夸克登录测试", QuarkConstants.LOGIN_URL, {}, { saved = true },
+        else CompositionLocalProvider(LocalCookieLoginTestConfiguration provides ::configureQuarkSmsTest) {
+        CookieLoginScreen("夸克登录测试", QuarkConstants.LOGIN_URL, {}, { saved = true },
             hideCredential = true,
             cookieIsPlausible = QuarkConstants::isValidCookie,
             onCredentialObserved = { if (!finished) report("waiting_for_login", it) },
@@ -58,5 +60,6 @@ fun QuarkLoginTestViewController(): UIViewController = ComposeUIViewController {
                 }
                 accepted
             })
+        }
     }
 }
