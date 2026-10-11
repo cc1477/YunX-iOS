@@ -6,11 +6,11 @@ Kotlin Multiplatform（KMP）共享业务代码与 Compose Multiplatform（CMP�
 
 ## 未签名真机 IPA
 
-[打开 Cloudflare LCSign 测试分发页](https://yunx-lcsign-cc1477.pages.dev/)，可直接导入 LCSign 或手动下载未签名 IPA，无需登录 GitHub。IPA 保存在 Cloudflare R2，并通过 Pages 下载入口的边缘缓存分发。页面显示包内版本、构建号、构建提交及 SHA256，导入后选择自己的证书签名安装。
+当前请从 [GitHub Pages 备用分发页](https://cc1477.github.io/YunX-iOS/)获取构建 10，可直接导入 LCSign 或手动下载未签名 IPA，无需登录 GitHub。[Cloudflare 加速分发页](https://yunx-lcsign-cc1477.pages.dev/)因发布任务受 GitHub 账单限制，暂仍为构建 8。页面显示包内版本、构建号、构建提交及 SHA256，导入后选择自己的证书签名安装。
 
-当前测试包为 **0.1.1（8）**。已补齐 123 扫码 Token 提取和蓝奏下载会话，修复夸克 Cookie 更新、游客凭证误存与父域／子域 Cookie 冲突；详情见 [夸克登录与构建速度](QUARK-LOGIN-FIX.md) 及 [123 与蓝奏修复记录](LOGIN-DOWNLOAD-FIX.md)。本地及 macOS 共享检查均为 13 项通过，本轮生成 79 张 Compose JVM 渲染截图。设置页“获取最新 iOS 版本”直接打开分发页。
+当前测试包为 **0.1.1（10）**。本轮修复夸克网页登录 Cookie 选择与定时采集、缺少短期会话时的补齐、登录后网盘刷新和旧请求回写保护，并加入详细诊断 ZIP 导出。使用方法见 [日志导出说明](docs/diagnostics.md)。此前 123 与蓝奏修复记录见 [LOGIN-DOWNLOAD-FIX.md](LOGIN-DOWNLOAD-FIX.md)。
 
-[设备包编译与分发部署](https://github.com/cc1477/YunX-iOS/actions/runs/38027669664)和[共享测试、模拟器构建及启动检查](https://github.com/cc1477/YunX-iOS/actions/runs/38027669674)均已通过。线上 IPA 已重新下载核对版本、构建号、包名及 SHA256；[本次模拟器启动截图产物](https://github.com/cc1477/YunX-iOS/actions/runs/38027669674/artifacts/11660808831)保留 7 天。此前系统字号与深色模式适配的原生截图保存在 [适配验证文档](UI-ADAPTATION.md)。
+[设备包编译与分发部署](https://github.com/cc1477/YunX-iOS/actions/runs/38125037077)和[共享测试、模拟器构建、启动及日志导出检查](https://github.com/cc1477/YunX-iOS/actions/runs/38125037193)均已通过，共享检查共 16 项。模拟器实际验证了 ZIP 完整性、凭证脱敏、iOS 网络错误码和 UIKit 分享显示；[分享菜单截图](docs/diagnostic-share-ios.png)及[日志样本](docs/diagnostic-sample-ios.zip)仅使用测试数据。线上 IPA 已重新下载核对版本、构建号、包名及 SHA256。账号实登仍需复测。
 
 这是 Debug 配置的 iPhone arm64 IPA，最低 iOS 15.0，bundle ID 为 `com.yunx.app.ios`。已核验 `Payload/YunX.app`、主程序与动态库的真机平台标记；不含代码签名或描述文件，需要自行签名后安装。真机运行、登录与下载尚未验证。首次 Release 构建因 Kotlin/Native 优化阶段的 Java heap space 失败，改用 Debug 后[构建和打包通过](https://github.com/cc1477/YunX-iOS/actions/runs/37919720624)。
 
@@ -59,8 +59,8 @@ AppIcon 目前仅有元数据占位，需在 Mac 的 Xcode 中补充真实图标
 
 - **后台下载有限制：**仅无请求头、无 provider 标识的普通 HTTP(S) 直链（非 m3u8）自动交给系统单连接下载，并从头开始；认证/网盘/HLS 等任务暂停后回前台继续。前台分片保留，系统调度和强制退出后恢复不保证，仍需真机验证。
 - **Gopeed、磁力/BT 不支持：**使用内置 Ktor 下载引擎，Gopeed 设置回退，磁力任务记录失败。
-- **WKWebView 登录仍需验证：**按允许域提取 Cookie 并经业务校验；Chrome UA 不等于 Chromium。跨域登录、SPA Cookie 更新、验证码与迅雷专有验证可能失败；localStorage Token 自动提取未实现。
-- **文件与系统能力：**下载保存在沙盒 `Documents/Downloads`；原生文件分享/预览/选择流程待补，当前 `file://` 打开不保证成功。通知没有 Android 常驻进度条；剪贴板读取可能触发 iOS 提示。
+- **WKWebView 登录仍需账号复测：**按允许域提取 Cookie，定时读取 SPA 凭证及 localStorage Token，并经业务校验；Chrome UA 不等于 Chromium。验证码、跨域登录与平台专有验证仍可能影响登录，可导出诊断日志排查。
+- **文件与系统能力：**下载保存在沙盒 `Documents/Downloads`；诊断 ZIP 可通过原生分享菜单发送或存储到文件，其他文件预览/选择流程待补。通知没有 Android 常驻进度条；剪贴板读取可能触发 iOS 提示。
 - **资源与更新：**AppIcon、部分品牌图片和国际化资源待补；设置页可打开 iOS 分发页获取新版本。
 
 各阶段实现、历史取舍及待验证项见 [PORTING-NOTES.md](PORTING-NOTES.md)。
