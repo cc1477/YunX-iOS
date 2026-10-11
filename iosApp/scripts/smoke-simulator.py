@@ -80,7 +80,8 @@ def main():
         while not marker.exists() and time.monotonic() < deadline:
             time.sleep(1)
         result = json.loads(marker.read_text())
-        assert all(result.get(key) for key in ("exported", "shareRequested", "sharePresented")), result
+        simctl("io", udid, "screenshot", str(screenshot.with_name(screenshot.stem + "-diagnostic-share.png")))
+        assert all(result.get(key) for key in ("exported", "sharePresented")), result
         import zipfile
         exported = list((container / "Documents/Downloads").glob("yunx_diagnostic_logs_*.zip"))
         assert len(exported) == 1, exported
@@ -90,7 +91,6 @@ def main():
             assert "native_export_test" in content and "schema 2" in content
             assert "nativeCode=-1009" in content and "NSURLErrorDomain" in content
             assert "native-secret" not in content and "second-secret" not in content
-        simctl("io", udid, "screenshot", str(screenshot.with_name(screenshot.stem + "-diagnostic-share.png")))
         shutil.copy2(exported[0], screenshot.parent / "YunX-diagnostic-sample.zip")
         print("Native diagnostic ZIP integrity, redaction and UIKit share sheet passed.", flush=True)
     except Exception:

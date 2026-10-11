@@ -3,6 +3,9 @@ package com.yunx.app.platform
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 import platform.Foundation.NSBundle
 import platform.Foundation.NSURL
 import platform.UIKit.*
@@ -27,6 +30,11 @@ actual suspend fun shareDiagnosticFile(path: String): Boolean = withContext(Disp
         sourceView = presenter.view
         sourceRect = presenter.view.bounds
     }
-    presenter.presentViewController(sheet, animated = true, completion = null)
-    true
+    withTimeoutOrNull(10_000) {
+        suspendCancellableCoroutine<Boolean> { continuation ->
+            presenter.presentViewController(sheet, animated = true) {
+                if (continuation.isActive) continuation.resume(sheet.presentingViewController != null)
+            }
+        }
+    } ?: false
 }

@@ -12,8 +12,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okio.FileSystem
 import okio.Path.Companion.toPath
-import platform.UIKit.UIApplication
-import platform.UIKit.UIActivityViewController
 import platform.Foundation.NSError
 import io.ktor.client.engine.darwin.DarwinHttpRequestException
 
@@ -31,11 +29,11 @@ fun DiagnosticExportTestViewController() = ComposeUIViewController {
         val file = withContext(Dispatchers.Default) {
             requireNotNull(LogExporter.exportDiagnosticToDownloads())
         }
-        val requested = LogExporter.share(file)
-        delay(1000)
-        val presented = UIApplication.sharedApplication.keyWindow?.rootViewController?.presentedViewController is UIActivityViewController
+        // The real exporter returns only after UIKit confirms presentation. The key window can
+        // change while sharing, so querying its root again is not a reliable presentation check.
+        val presented = LogExporter.share(file)
         FileSystem.SYSTEM.write(appCacheDir().toPath() / "diagnostic-export-test.json") {
-            writeUtf8("""{"exported":true,"shareRequested":$requested,"sharePresented":$presented}""")
+            writeUtf8("""{"exported":true,"sharePresented":$presented}""")
         }
         DiagnosticLog.setEnabled(false)
     }
