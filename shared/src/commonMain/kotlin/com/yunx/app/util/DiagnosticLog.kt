@@ -128,7 +128,8 @@ object DiagnosticLog {
             .take(16).joinToString(" | ") { it.trim() }
         val native = generateSequence(failure) { it.cause?.takeUnless { cause -> cause === it } }
             .take(4).map(::diagnosticExceptionDetails).filter { it.isNotBlank() }.joinToString(" | ")
-        error(module, event, code = causes, summary = "$native | $frames")
+        val business = (failure as? com.yunx.app.data.network.QuarkApiException)?.code
+        error(module, event, code = causes, summary = "$native | businessCode=$business | $frames")
     }
 
     /** 数据库读写：表名 / 操作 / 耗时 / 影响行数 / 错误 */

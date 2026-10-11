@@ -40,10 +40,11 @@
   <main>
     <h1>YunX iOS 测试版</h1>
     <p class="version" id="version" aria-live="polite">正在读取版本信息…</p>
-    <p>本次更新优化安全区、键盘避让、横屏和大字号布局。此包为未签名 Debug 测试版，导入 LCSign 后，选择你的证书签名并安装。</p>
+    <p>本次更新修复夸克登录凭证采集、会话补齐和网盘刷新，并新增诊断日志导出。此包为未签名 Debug 测试版，导入 LCSign 后，选择你的证书签名并安装。</p>
     <a class="button" id="import" hidden>导入到 LCSign</a>
     <a class="fallback" id="download" href="YunX-unsigned.ipa" download="YunX-unsigned.ipa">手动下载 IPA</a>
     <p class="steps">请在 iPhone 上打开此页，并先安装 LCSign。如果点击导入后没有打开应用，可手动下载 IPA，再到 LCSign 导入文件。最低支持 iOS 15。</p>
+    <p class="steps">遇到问题：在 YunX 设置中开启「记录诊断日志」，重现问题后点击「导出诊断日志」，将 ZIP 和操作步骤发回分析。</p>
     <details>
       <summary>查看构建与校验信息</summary>
       <p id="build"></p>
