@@ -88,6 +88,7 @@ def main():
             assert package.testzip() is None
             content = "\n".join(package.read(name).decode() for name in package.namelist())
             assert "native_export_test" in content and "schema 2" in content
+            assert "nativeCode=-1009" in content and "NSURLErrorDomain" in content
             assert "native-secret" not in content and "second-secret" not in content
         simctl("io", udid, "screenshot", str(screenshot.with_name(screenshot.stem + "-diagnostic-share.png")))
         shutil.copy2(exported[0], screenshot.parent / "YunX-diagnostic-sample.zip")

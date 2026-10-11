@@ -24,6 +24,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.interop.UIKitViewController
 import kotlinx.cinterop.cValue
+import kotlinx.cinterop.ObjCSignatureOverride
 import kotlinx.coroutines.delay
 import com.yunx.app.util.DiagnosticLog
 import com.yunx.app.data.network.QuarkConstants
@@ -83,10 +84,12 @@ actual fun CookieLoginWebView(url: String, onCookies: (Map<String, String>) -> U
             DiagnosticLog.webview("navigation_finished", webView.URL?.absoluteString)
             cookieObserver.readCookies()
         }
+        @ObjCSignatureOverride
         override fun webView(webView: WKWebView, didFailProvisionalNavigation: WKNavigation?, withError: NSError) {
             DiagnosticLog.webview("navigation_start_failed", webView.URL?.absoluteString, withError.code,
                 "errorDomain=" + withError.domain)
         }
+        @ObjCSignatureOverride
         override fun webView(webView: WKWebView, didFailNavigation: WKNavigation?, withError: NSError) {
             DiagnosticLog.webview("navigation_failed", webView.URL?.absoluteString, withError.code,
                 "errorDomain=" + withError.domain)

@@ -14,6 +14,8 @@ import okio.FileSystem
 import okio.Path.Companion.toPath
 import platform.UIKit.UIApplication
 import platform.UIKit.UIActivityViewController
+import platform.Foundation.NSError
+import io.ktor.client.engine.darwin.DarwinHttpRequestException
 
 /** Simulator-only check of the shipping exporter and UIKit share sheet, with synthetic input. */
 fun DiagnosticExportTestViewController() = ComposeUIViewController {
@@ -24,6 +26,8 @@ fun DiagnosticExportTestViewController() = ComposeUIViewController {
         DiagnosticLog.event(DiagnosticLog.OPERATION, "native_export_test")
         DiagnosticLog.event(DiagnosticLog.OPERATION, "privacy_fixture", "Cookie: fixture=native-secret; second=second-secret")
         DiagnosticLog.exception(DiagnosticLog.OPERATION, "native_exception_fixture", IllegalStateException("password=native-secret"))
+        DiagnosticLog.exception(DiagnosticLog.NETWORK, "native_network_fixture",
+            DarwinHttpRequestException(NSError.errorWithDomain("NSURLErrorDomain", -1009, null)))
         val file = withContext(Dispatchers.Default) {
             requireNotNull(LogExporter.exportDiagnosticToDownloads())
         }

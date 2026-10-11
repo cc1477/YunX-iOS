@@ -126,7 +126,9 @@ object DiagnosticLog {
             .take(4).map { it::class.simpleName.orEmpty() }.joinToString(" -> ")
         val frames = failure.stackTraceToString().lineSequence().filter { it.trimStart().startsWith("at ") }
             .take(16).joinToString(" | ") { it.trim() }
-        error(module, event, code = causes, summary = frames)
+        val native = generateSequence(failure) { it.cause?.takeUnless { cause -> cause === it } }
+            .take(4).map(::diagnosticExceptionDetails).filter { it.isNotBlank() }.joinToString(" | ")
+        error(module, event, code = causes, summary = "$native | $frames")
     }
 
     /** 数据库读写：表名 / 操作 / 耗时 / 影响行数 / 错误 */

@@ -6,6 +6,7 @@ import kotlinx.coroutines.withContext
 import platform.Foundation.NSBundle
 import platform.Foundation.NSURL
 import platform.UIKit.*
+import io.ktor.client.engine.darwin.DarwinHttpRequestException
 
 actual fun diagnosticEnvironment(): String {
     val bundle = NSBundle.mainBundle
@@ -13,6 +14,9 @@ actual fun diagnosticEnvironment(): String {
     val build = bundle.objectForInfoDictionaryKey("CFBundleVersion") ?: "unknown"
     return "YunX $version ($build)\n${UIDevice.currentDevice.systemName} ${UIDevice.currentDevice.systemVersion}\n${UIDevice.currentDevice.model}"
 }
+
+actual fun diagnosticExceptionDetails(failure: Throwable): String =
+    (failure as? DarwinHttpRequestException)?.origin?.let { "errorDomain=" + it.domain + " | nativeCode=" + it.code }.orEmpty()
 
 actual suspend fun shareDiagnosticFile(path: String): Boolean = withContext(Dispatchers.Main) {
     var presenter = UIApplication.sharedApplication.keyWindow?.rootViewController ?: return@withContext false
