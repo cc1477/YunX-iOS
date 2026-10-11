@@ -22,9 +22,7 @@ import com.yunx.app.util.DiagnosticLog
 import com.yunx.app.util.LogRedactor
 import io.ktor.client.plugins.api.*
 import io.ktor.client.statement.*
-import io.ktor.client.call.save
 import io.ktor.http.*
-import io.ktor.http.content.*
 import kotlinx.coroutines.CancellationException
 import kotlin.time.TimeSource
 
@@ -33,33 +31,29 @@ val DiagnosticNetworkInterceptor = createClientPlugin("DiagnosticNetworkIntercep
         if (!DiagnosticLog.isEnabled()) return@on proceed(request)
         val start = TimeSource.Monotonic.markNow()
         val safeUrl = LogRedactor.url(request.url.build())
-        fun requestSummary(): String? = when (val body = request.body) {
-            is TextContent -> LogRedactor.line(body.text.diagnosticPrefix())
-            // Form and multipart bodies carry credentials. Omit them instead of serializing secrets.
-            else -> null
-        }
+        val requestId = kotlin.random.Random.nextInt(1, Int.MAX_VALUE)
+        val range = request.headers["Range"]?.takeIf { it.matches(Regex("bytes=[0-9]*-[0-9]*")) }
+        DiagnosticLog.log(DiagnosticLog.NETWORK, "http_started", taskId = requestId,
+            summary = request.method.value + " " + safeUrl + " | ranged=" + (range != null) +
+                " | authenticated=" + request.headers.names().any { it.equals("Cookie", true) || it.equals("Authorization", true) })
         try {
-            val original = proceed(request)
-            val call = if (original.response.status.isSuccess()) original else original.save()
+            // Never consume or copy payloads: they may contain credentials, file names or large downloads.
+            val call = proceed(request)
             val response = call.response
-            val summary = if (!response.status.isSuccess()) runCatching {
-                LogRedactor.line(response.bodyAsText().diagnosticPrefix())
-            }.getOrNull() else null
             DiagnosticLog.network(request.method.value, safeUrl, response.status.value,
-                start.elapsedNow().inWholeMilliseconds, responseBody = summary)
+                start.elapsedNow().inWholeMilliseconds, requestId = requestId)
+            DiagnosticLog.log(DiagnosticLog.NETWORK, "http_metadata", taskId = requestId,
+                size = response.headers[HttpHeaders.ContentLength]?.toLongOrNull(),
+                summary = "type=" + response.headers[HttpHeaders.ContentType]?.substringBefore(';')
+                    ?.takeIf { it.matches(Regex("[a-zA-Z0-9.+-]+/[a-zA-Z0-9.+-]+")) }.orEmpty() +
+                    " | range=" + range.orEmpty())
             call
         } catch (error: Throwable) {
             if (error is CancellationException) throw error
             DiagnosticLog.network(request.method.value, safeUrl, -1,
-                start.elapsedNow().inWholeMilliseconds, error = LogRedactor.line(error.message.orEmpty().diagnosticPrefix()), requestBody = requestSummary())
+                start.elapsedNow().inWholeMilliseconds, error = error::class.simpleName, requestId = requestId)
+            DiagnosticLog.exception(DiagnosticLog.NETWORK, "transport_exception", error)
             throw error
         }
     }
-}
-
-private fun String.diagnosticPrefix(): String {
-    val bytes = encodeToByteArray()
-    var end = minOf(bytes.size, 1536)
-    if (end < bytes.size) while (end > 0 && bytes[end].toInt() and 0xc0 == 0x80) end--
-    return bytes.copyOfRange(0, end).decodeToString()
 }

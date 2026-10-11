@@ -26,12 +26,15 @@ import com.yunx.app.data.db.QuarkAccountDao
 import com.yunx.app.data.db.QuarkAccountEntity
 import com.yunx.app.data.network.QuarkApi
 import com.yunx.app.data.network.QuarkConstants
+import com.yunx.app.util.DiagnosticLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * 夸克账号数据仓库：Room 持久化 + 网络验证 + __puus 会话刷新（修复 AlistGo/alist#830 下载 412）。
@@ -47,14 +50,20 @@ class QuarkAccountRepository(
 
     /** cookieSink 落库用独立作用域（非 UI 线程，避免阻塞 API 调用链） */
     private val sinkScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val accountWrites = Mutex()
 
     init {
         // 每次 API 响应若带 Set-Cookie（__puus/__pus），自动合并并落库，保持会话始终新鲜
-        api.cookieSink = { merged ->
+        api.cookieSink = { original, merged ->
             sinkScope.launch {
-                dao.getAccount()?.let { acc ->
-                    if (acc.cookie != merged) {
-                        dao.upsert(acc.copy(cookie = merged, updatedAt = Clock.System.now().toEpochMilliseconds()))
+                accountWrites.withLock {
+                    dao.getAccount()?.let { acc ->
+                        if (acc.cookie == original && acc.cookie != merged) {
+                            dao.upsert(acc.copy(cookie = merged, updatedAt = Clock.System.now().toEpochMilliseconds()))
+                            DiagnosticLog.event(DiagnosticLog.OPERATION, "quark_rotated_session_saved")
+                        } else if (acc.cookie != merged) {
+                            DiagnosticLog.warn(DiagnosticLog.OPERATION, "quark_stale_session_update_ignored")
+                        }
                     }
                 }
             }
@@ -74,13 +83,17 @@ class QuarkAccountRepository(
         val acc = dao.getAccount() ?: return null
         val need = Clock.System.now().toEpochMilliseconds() - lastRefreshTs > QuarkConstants.PUUS_REFRESH_INTERVAL_MS
         if (!need) return acc.cookie
-        val refreshed = api.refreshSession(acc.cookie)
-        return if (refreshed != null) {
-            dao.upsert(acc.copy(cookie = refreshed, updatedAt = Clock.System.now().toEpochMilliseconds()))
-            lastRefreshTs = Clock.System.now().toEpochMilliseconds()
-            refreshed
-        } else {
-            acc.cookie
+        val refreshed = api.refreshSession(acc.cookie, publishUpdates = false)
+        return accountWrites.withLock {
+            val current = dao.getAccount()
+            if (current?.cookie != acc.cookie) return@withLock current?.cookie
+            if (refreshed != null) {
+                dao.upsert(acc.copy(cookie = refreshed, updatedAt = Clock.System.now().toEpochMilliseconds()))
+                lastRefreshTs = Clock.System.now().toEpochMilliseconds()
+                refreshed
+            } else {
+                acc.cookie
+            }
         }
     }
 
@@ -92,25 +105,36 @@ class QuarkAccountRepository(
                 Unit
             }
         }
-        dao.clear()
+        accountWrites.withLock { dao.clear(); lastRefreshTs = 0L }
     }
 
     /**
      * 校验 Cookie 有效性；有效则拉取昵称并落库，返回 true；无效返回 false。
      */
     suspend fun saveQuarkAccount(cookie: String): Boolean {
-        if (!QuarkConstants.isValidCookie(cookie)) return false
-        val verifiedCookie = api.validateCookie(cookie) ?: return false
+        DiagnosticLog.event(DiagnosticLog.OPERATION, "quark_save_started",
+            "hasPrincipal=" + QuarkConstants.hasLoginPrincipal(cookie) + " | hasSession=" + QuarkConstants.isValidCookie(cookie))
+        if (!QuarkConstants.hasLoginPrincipal(cookie)) {
+            DiagnosticLog.warn(DiagnosticLog.OPERATION, "quark_save_missing_principal")
+            return false
+        }
+        val verifiedCookie = api.validateCookie(cookie) ?: run {
+            DiagnosticLog.warn(DiagnosticLog.OPERATION, "quark_save_rejected")
+            return false
+        }
         val nickname = api.fetchNickname(verifiedCookie) ?: "夸克用户"
-        dao.upsert(
-            QuarkAccountEntity(
-                id = "quark",
-                cookie = verifiedCookie,
-                nickname = nickname
+        accountWrites.withLock {
+            dao.upsert(
+                QuarkAccountEntity(
+                    id = "quark",
+                    cookie = verifiedCookie,
+                    nickname = nickname
+                )
             )
-        )
-        // 重置刷新计时：新登录的 __puus 是新鲜的，避免立刻触发一次无谓刷新
-        lastRefreshTs = Clock.System.now().toEpochMilliseconds()
+            // 新会话避免立即触发一次无谓刷新。
+            lastRefreshTs = Clock.System.now().toEpochMilliseconds()
+        }
+        DiagnosticLog.event(DiagnosticLog.OPERATION, "quark_account_saved")
         return true
     }
 }

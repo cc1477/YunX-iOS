@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import com.yunx.app.util.DiagnosticLog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,10 +77,19 @@ internal fun CookieLoginScreen(
                 saving = true
                 scope.launch {
                     try {
-                        if (validateAndSave(credential.trim())) onSaved()
-                        else error = "凭证无效或登录尚未完成，请重试"
+                        DiagnosticLog.webview("manual_login_save_started", url)
+                        if (validateAndSave(credential.trim())) {
+                            DiagnosticLog.webview("manual_login_saved", url)
+                            onSaved()
+                        } else {
+                            DiagnosticLog.webview("manual_login_rejected", url)
+                            error = "凭证无效或登录尚未完成，请重试；可在设置中导出诊断日志"
+                        }
                     } catch (e: CancellationException) { throw e }
-                    catch (e: Exception) { error = "保存失败，请检查网络后重试" }
+                    catch (e: Exception) {
+                        DiagnosticLog.exception(DiagnosticLog.OPERATION, "manual_login_exception", e)
+                        error = "保存失败，请检查网络后重试"
+                    }
                     finally { saving = false }
                 }
             }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(if (saving) "正在校验…" else "保存登录") }
@@ -90,7 +100,7 @@ internal fun CookieLoginScreen(
                 }) {
                 CookieLoginWebView(url, loginDomains) { cookies ->
                     if (!manualCredential && credentialLabel == "Cookie") {
-                        credential = cookies.entries.joinToString("; ") { "${it.key}=${it.value}" }
+                        credential = cookies.entries.sortedBy { it.key }.joinToString("; ") { "${it.key}=${it.value}" }
                         onCredentialObserved(credential)
                     }
                 }

@@ -6,6 +6,9 @@ struct ComposeView: UIViewControllerRepresentable {
     @Environment(\.sizeCategory) private var sizeCategory
     func makeUIViewController(context: Context) -> UIViewController {
         #if targetEnvironment(simulator)
+        if ProcessInfo.processInfo.arguments.contains("--diagnostic-export-test") {
+            return DiagnosticExportTestViewControllerKt.DiagnosticExportTestViewController()
+        }
         if ProcessInfo.processInfo.arguments.contains("--quark-login-test") {
             return QuarkLoginTestViewControllerKt.QuarkLoginTestViewController()
         }

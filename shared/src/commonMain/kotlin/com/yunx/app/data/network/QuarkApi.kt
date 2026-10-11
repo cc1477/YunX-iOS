@@ -39,6 +39,8 @@ import com.yunx.app.data.network.model.QuotaInfo
 import com.yunx.app.data.network.model.ShareFile
 import com.yunx.app.data.network.model.ShareInfo
 import com.yunx.app.data.network.model.ShareToken
+import com.yunx.app.util.DiagnosticLog
+import kotlin.time.TimeSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -70,10 +72,9 @@ object QuarkCookieUtil {
             .joinToString("; ")
 
     private fun setOrReplace(cookie: String, name: String, value: String): String {
-        val parts = cookie.split(";").map { it.trim() }.toMutableList()
-        val idx = parts.indexOfFirst { it.startsWith("$name=") }
+        val parts = cookie.split(";").map { it.trim() }.filter { it.isNotBlank() && !it.startsWith("$name=") }.toMutableList()
         val kv = "$name=$value"
-        if (idx >= 0) parts[idx] = kv else parts.add(kv)
+        parts.add(kv)
         return parts.joinToString("; ")
     }
 }
@@ -91,7 +92,7 @@ class QuarkApi(
      * Cookie 回写接收器（推荐由 QuarkAccountRepository 注入并落库）：
      * 每次响应把 Set-Cookie 合并后的最新 Cookie 回调，保持 __puus/__pus 始终新鲜。
      */
-    var cookieSink: ((String) -> Unit)? = null
+    var cookieSink: ((original: String, merged: String) -> Unit)? = null
 
     /**
      * 游客态令牌 `__pugs`（未登录访问分享时由响应 Set-Cookie 下发，约 3 小时有效）。
@@ -108,18 +109,35 @@ class QuarkApi(
 
     /** Verify the same authenticated endpoint used by the drive tab, and retain rotated cookies. */
     suspend fun validateCookie(cookie: String): String? = withContext(Dispatchers.Default) {
-        val request = get("${QuarkConstants.CLOUD_FILE_SORT_URL}&pdir_fid=0&_page=1&_size=1", cookie)
-            .withHeader("Origin", "https://pan.quark.cn")
-            .withHeader("Referer", QuarkConstants.DOWNLOAD_REFERER)
+        val start = TimeSource.Monotonic.markNow()
+        if (!QuarkConstants.hasLoginPrincipal(cookie)) {
+            DiagnosticLog.warn(DiagnosticLog.OPERATION, "quark_validate_missing_principal")
+            return@withContext null
+        }
         try {
+            // WebKit may observe the principal before the short-lived session is issued.
+            // This refresh must never update the previously saved account during a login attempt.
+            val candidate = if (QuarkConstants.isValidCookie(cookie)) cookie
+                else refreshSession(cookie, publishUpdates = false) ?: return@withContext null
+            val request = get("${QuarkConstants.CLOUD_FILE_SORT_URL}&pdir_fid=0&_page=1&_size=1", candidate)
+                .withHeader("Origin", "https://pan.quark.cn")
+                .withHeader("Referer", QuarkConstants.DOWNLOAD_REFERER)
             val response = client.executeRequest(request)
             val json = parseJsonObject(response.bodyAsText())
-            if (!response.status.isSuccess() || json.optInt("status") != 200 || json.optJsonObject("data") == null) return@withContext null
+            val accepted = response.status.isSuccess() && json.optInt("status") == 200 && json.optJsonObject("data") != null
+            DiagnosticLog.log(DiagnosticLog.OPERATION, "quark_validate", status = if (accepted) "accepted" else "rejected",
+                costMs = start.elapsedNow().inWholeMilliseconds, code = response.status.value,
+                summary = "businessStatus=" + json.optInt("status") + " | businessCode=" + json.optInt("code") +
+                    " | hasData=" + (json.optJsonObject("data") != null) + " | guest=" + json.optString("message").contains("guest", true))
+            if (!accepted) return@withContext null
             // A login attempt must not publish Cookie updates into a previously saved account.
-            QuarkCookieUtil.mergeFromSetCookies(cookie, response.headers.getAll("Set-Cookie").orEmpty())
+            QuarkCookieUtil.mergeFromSetCookies(candidate, response.headers.getAll("Set-Cookie").orEmpty())
                 .takeIf(QuarkConstants::isValidCookie)
         } catch (e: kotlinx.coroutines.CancellationException) { throw e }
-        catch (e: Exception) { null }
+        catch (e: Exception) {
+            DiagnosticLog.exception(DiagnosticLog.OPERATION, "quark_validate_exception", e)
+            null
+        }
     }
 
     suspend fun fetchNickname(cookie: String): String? = withContext(Dispatchers.Default) {
@@ -129,7 +147,7 @@ class QuarkApi(
             .withHeader("User-Agent", QuarkConstants.API_USER_AGENT)
             .withGet()
 
-        runCatching {
+        try {
             client.executeRequest(request).let { response ->
                 if (!response.status.isSuccess()) return@let null
                 val body = response.bodyAsText() ?: return@let null
@@ -141,7 +159,11 @@ class QuarkApi(
                         ?.takeIf { it.isNotBlank() }
                 } else null
             }
-        }.getOrNull()
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+        catch (e: Exception) {
+            DiagnosticLog.exception(DiagnosticLog.OPERATION, "quark_nickname_exception", e)
+            null
+        }
     }
 
     // ---------- 分享解析 ----------
@@ -423,7 +445,7 @@ class QuarkApi(
      * 剥离 __puus 后请求任意接口（/config），服务端会在 Set-Cookie 中重新下发 __puus/__pus。
      * @return 合并了最新 __puus/__pus 的 Cookie；失败返回 null（调用方应回退原 Cookie）。
      */
-    suspend fun refreshSession(cookie: String): String? = withContext(Dispatchers.Default) {
+    suspend fun refreshSession(cookie: String, publishUpdates: Boolean = true): String? = withContext(Dispatchers.Default) {
         val request = HttpRequestBuilder()
             .withUrl(QuarkConstants.CONFIG_URL)
             .withHeader("Cookie", QuarkCookieUtil.withoutPuus(cookie))
@@ -431,13 +453,23 @@ class QuarkApi(
             .withHeader("Referer", QuarkConstants.DOWNLOAD_REFERER)
             .withGet()
 
-        runCatching {
+        try {
             client.executeRequest(request).let { resp ->
+                val json = parseJsonObject(resp.bodyAsText())
                 val merged = QuarkCookieUtil.mergeFromSetCookies(cookie, (resp.headers.getAll("Set-Cookie") ?: emptyList()))
-                if (merged != cookie) cookieSink?.invoke(merged)
+                val accepted = resp.status.isSuccess() && json.optInt("status") == 200 && QuarkConstants.isValidCookie(merged)
+                DiagnosticLog.log(DiagnosticLog.OPERATION, "quark_session_refresh", code = resp.status.value,
+                    status = if (accepted) "accepted" else "rejected",
+                    summary = "businessStatus=" + json.optInt("status") + " | changed=" + (merged != cookie) + " | publish=$publishUpdates")
+                if (!accepted) return@let null
+                if (publishUpdates && merged != cookie) cookieSink?.invoke(cookie, merged)
                 merged
             }
-        }.getOrNull()
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+        catch (e: Exception) {
+            DiagnosticLog.exception(DiagnosticLog.OPERATION, "quark_session_exception", e)
+            null
+        }
     }
 
     /** 6.1 获取下载直链 */
@@ -751,10 +783,17 @@ class QuarkApi(
             it.bodyAsText() ?: throw QuarkApiException("请求失败：响应为空")
         }
         val json = runCatching { parseJsonObject(body) }.getOrElse {
+            DiagnosticLog.exception(DiagnosticLog.NETWORK, "quark_response_parse", it)
             // 服务端返回非 JSON（多半是 HTML 错误页/风控页）时带上 HTTP 状态码，
             // 便于分辨「未登录被拒（401/403）」与「分享已失效」
             throw QuarkApiException("响应解析失败（HTTP ${response.status.value}）")
         }
+        DiagnosticLog.log(DiagnosticLog.OPERATION, "quark_api_result", code = response.status.value,
+            status = if (response.status.isSuccess() && json.optInt("status") == 200) "accepted" else "rejected",
+            summary = "endpoint=" + request.url.encodedPath.takeIf { it.matches(Regex("/1/clouddrive/(file|share|task|config)(/[a-z_]+)*")) }.orEmpty() +
+                " | businessStatus=" + json.optInt("status") + " | businessCode=" + json.optInt("code") +
+                " | hasData=" + (json.optJsonObject("data") != null) + " | guest=" + json.optString("message").contains("guest", true))
+        if (!response.status.isSuccess()) throw QuarkApiException("请求失败（HTTP ${response.status.value}）")
         if (json.optInt("status") != 200) {
             // 透传服务端 message，如「提取码错误」「分享已失效」等
             val message = json.optString("message").ifBlank { "请求失败" }
@@ -771,6 +810,6 @@ class QuarkApi(
         val original = request.headers["Cookie"].orEmpty()
         if (original.isBlank()) return
         val merged = QuarkCookieUtil.mergeFromSetCookies(original, setCookies)
-        if (merged != original) cookieSink?.invoke(merged)
+        if (merged != original) cookieSink?.invoke(original, merged)
     }
 }

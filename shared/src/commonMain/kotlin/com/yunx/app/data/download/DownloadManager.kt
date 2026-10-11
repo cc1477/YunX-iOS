@@ -205,6 +205,7 @@ class DownloadManager(
         if (settings.downloadEngine == SettingsRepository.ENGINE_GOPEED) PlatformLog.w("YunX-DL", "Gopeed 不适用于 iOS，回退 builtin")
         locked(lock) { callbacks[id] = onComplete; if (fallbackUrl.isNotBlank()) fallbackUrls[id] = fallbackUrl }
         DownloadDebugLog.record(id, "入队", "platform=$platform size=$size")
+        com.yunx.app.util.DiagnosticLog.log(com.yunx.app.util.DiagnosticLog.DOWNLOAD, "queued", taskId = id, size = size, summary = "platform=$platform")
         start(id, headers); return id
     }
     private suspend fun failMagnet(id: Long, name: String) {
@@ -238,22 +239,32 @@ class DownloadManager(
                     dao.updateStatus(id, DownloadTaskEntity.STATUS_DOWNLOADING); dao.updateError(id, "")
                     val requestHeaders = if (headers.isNotEmpty()) headers.also { dao.updateRequestHeaders(id, encodeHeaders(it)) } else loadPersistedHeaders(task)
                     val began = TimeSource.Monotonic.markNow()
+                    com.yunx.app.util.DiagnosticLog.log(com.yunx.app.util.DiagnosticLog.DOWNLOAD, "started", taskId = id,
+                        summary = "platform=" + task.platform + " | authenticated=" + requestHeaders.keys.any { it.equals("Cookie", true) || it.equals("Authorization", true) })
                     var failure: Exception? = null
                     for (attempt in 0..retryCountProvider().coerceIn(0, 10)) {
                         try { runTask(task, requestHeaders, began, useFallback = attempt > 0); failure = null; break }
                         catch (error: CancellationException) { throw error }
-                        catch (error: Exception) { failure = error; DownloadDebugLog.record(id, "重试", "attempt=$attempt"); if (attempt < retryCountProvider().coerceIn(0, 10)) delay(1000L shl minOf(attempt, 4)) }
+                        catch (error: Exception) {
+                            failure = error; DownloadDebugLog.record(id, "重试", "attempt=$attempt")
+                            com.yunx.app.util.DiagnosticLog.log(com.yunx.app.util.DiagnosticLog.DOWNLOAD, "retry", taskId = id, code = error::class.simpleName, summary = "attempt=$attempt")
+                            if (attempt < retryCountProvider().coerceIn(0, 10)) delay(1000L shl minOf(attempt, 4))
+                        }
                     }
                     failure?.let { throw it }
+                    com.yunx.app.util.DiagnosticLog.log(com.yunx.app.util.DiagnosticLog.DOWNLOAD, "completed", taskId = id, costMs = began.elapsedNow().inWholeMilliseconds)
                     service.notifyResult(id, title, true)
                     locked(lock) { callbacks.remove(id) }?.let { cb -> try { cb() } catch (error: Exception) { PlatformLog.w("YunX-DL", "下载完成清理失败", error) } }
                     locked(lock) { fallbackUrls.remove(id) }
                 } catch (error: CancellationException) {
+                    com.yunx.app.util.DiagnosticLog.log(com.yunx.app.util.DiagnosticLog.DOWNLOAD, "paused", taskId = id)
                     withContext(NonCancellable) {
                         if (dao.get(id)?.status != DownloadTaskEntity.STATUS_COMPLETED) dao.updateStatus(id, DownloadTaskEntity.STATUS_PAUSED)
                     }
                     throw error
                 } catch (error: Exception) {
+                    com.yunx.app.util.DiagnosticLog.log(com.yunx.app.util.DiagnosticLog.DOWNLOAD, "failed", taskId = id, code = error::class.simpleName)
+                    com.yunx.app.util.DiagnosticLog.exception(com.yunx.app.util.DiagnosticLog.DOWNLOAD, "download_exception", error)
                     dao.updateStatus(id, DownloadTaskEntity.STATUS_FAILED)
                     // Network exception messages may contain signed URLs: show a fixed error, keep diagnostic details redacted.
                     val message = "下载失败，请重试或重新解析链接"
@@ -320,6 +331,8 @@ class DownloadManager(
         if (total <= 0 && fallback != null) { url = fallback; total = downloader.getTotalSize(url, headers) ?: -1L }
         val hls = url.substringBefore('?').endsWith(".m3u8", true)
         val count = if (hls || total <= 0) 1 else (current.chunkCount.takeIf { it > 0 } ?: threadProvider(task.platform).coerceIn(1, 512)).coerceAtMost(total.coerceAtMost(512).toInt())
+        com.yunx.app.util.DiagnosticLog.log(com.yunx.app.util.DiagnosticLog.DOWNLOAD, "plan", taskId = id, size = total,
+            summary = "chunks=$count | hls=$hls | fallback=$useFallback")
         if (current.plannedTotalSize > 0 && current.plannedTotalSize != total) { deleteParts(id); fs.createDirectories(dir) }
         dao.updatePlan(id, count, total.coerceAtLeast(0))
         val paths = (0 until count).map { dir / "part_$it" }

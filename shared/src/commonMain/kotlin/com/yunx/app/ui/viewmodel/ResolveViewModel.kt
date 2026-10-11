@@ -947,6 +947,7 @@ class ResolveViewModel(
             // 口令已换成真实分享链接：收藏 / 复制 / 重新解析都用它，而不是原始口令
             currentLink = effectiveLink
             currentPlatform = parsed.platform
+            com.yunx.app.util.DiagnosticLog.event(com.yunx.app.util.DiagnosticLog.OPERATION, "parse_started", "platform=" + parsed.platform.name)
             isGuest = false
             // 游客模式：列目录不要求登录（7 个网盘的分享列表接口都允许匿名，详见 Agent.md §3.19）。
             // 凭据为空时传空串，是否放行由服务端决定；下载/转存仍在各自入口要求登录。
@@ -955,6 +956,7 @@ class ResolveViewModel(
             val repo = currentRepo()
             repo.createSession(effectiveLink, pwd, credential)
                 .onSuccess { s ->
+                    com.yunx.app.util.DiagnosticLog.event(com.yunx.app.util.DiagnosticLog.OPERATION, "parse_session_created", "guest=$isGuest")
                     session = s
                     currentDirFid = currentDefaultDirFid()
                     dirStack.clear()
@@ -962,6 +964,7 @@ class ResolveViewModel(
                     loadFiles(s, currentDirFid, credential, repo)
                 }
                 .onFailure { e ->
+                    com.yunx.app.util.DiagnosticLog.exception(com.yunx.app.util.DiagnosticLog.OPERATION, "parse_failed", e)
                     val msg = e.message ?: "解析失败"
                     // 游客模式失败时补一句可执行的引导，而不是只抛服务端原文
                     uiState = ResolveUiState.Error(
@@ -1615,10 +1618,19 @@ class ResolveViewModel(
         file: ShareFile,
         credential: String
     ): Result<DownloadLink> {
-        if (!noSaveDownloadProvider()) return repo.getShareDownloadLink(session, file, credential)
+        com.yunx.app.util.DiagnosticLog.event(com.yunx.app.util.DiagnosticLog.OPERATION, "download_link_started",
+            "platform=" + currentPlatform.name + " | authenticated=" + credential.isNotBlank())
+        if (!noSaveDownloadProvider()) return repo.getShareDownloadLink(session, file, credential).also {
+            it.exceptionOrNull()?.let { error -> com.yunx.app.util.DiagnosticLog.exception(com.yunx.app.util.DiagnosticLog.OPERATION, "download_link_failed", error) }
+        }
         val noSave = repo.getShareDownloadLinkWithoutSave(session, file, credential)
-        if (noSave.isSuccess || currentPlatform != SharePlatform.QUARK) return noSave
-        return repo.getShareDownloadLink(session, file, credential)
+        if (noSave.isSuccess || currentPlatform != SharePlatform.QUARK) return noSave.also {
+            it.exceptionOrNull()?.let { error -> com.yunx.app.util.DiagnosticLog.exception(com.yunx.app.util.DiagnosticLog.OPERATION, "download_link_failed", error) }
+        }
+        com.yunx.app.util.DiagnosticLog.event(com.yunx.app.util.DiagnosticLog.OPERATION, "download_link_save_fallback")
+        return repo.getShareDownloadLink(session, file, credential).also {
+            it.exceptionOrNull()?.let { error -> com.yunx.app.util.DiagnosticLog.exception(com.yunx.app.util.DiagnosticLog.OPERATION, "download_link_failed", error) }
+        }
     }
 
     /** 获取文件下载直链（各平台实现不同：夸克免转存优先（失败回退转存）/ UC 直接取 / 迅雷转存后取详情直链；GitHub 直接构造 URL） */
@@ -1875,9 +1887,11 @@ class ResolveViewModel(
     ) {
         repo.listFiles(s, dirFid, credential)
             .onSuccess { files ->
+                com.yunx.app.util.DiagnosticLog.log(com.yunx.app.util.DiagnosticLog.OPERATION, "share_files_loaded", size = files.size.toLong())
                 uiState = ResolveUiState.Detail(s, files)
             }
             .onFailure { e ->
+                com.yunx.app.util.DiagnosticLog.exception(com.yunx.app.util.DiagnosticLog.OPERATION, "share_files_failed", e)
                 uiState = ResolveUiState.Error(e.message ?: "获取文件列表失败")
             }
     }

@@ -109,11 +109,15 @@ class QuarkLoginFlowTest {
             assertFalse(repository.saveQuarkAccount("__pus=http-error; __puus=intermediate"))
             assertEquals("previous-session", state.value?.cookie)
             assertEquals(0, nicknames.get())
+            // A principal-only WebKit capture must bootstrap then verify the authenticated drive.
+            assertTrue(repository.saveQuarkAccount("__pus=authenticated"))
+            assertTrue(QuarkConstants.isValidCookie(state.value?.cookie))
+            assertEquals(1, nicknames.get())
             assertTrue(repository.saveQuarkAccount("__pus=authenticated; __puus=initial"))
             assertEquals("fixture-user", state.value?.nickname)
             val savedCookie = checkNotNull(state.value).cookie
             assertEquals("__pus=authenticated; __puus=rotated", savedCookie)
-            assertEquals(1, nicknames.get())
+            assertEquals(2, nicknames.get())
             assertTrue(rotatedCookieUsed.get())
             assertTrue(refererUsed.get())
             assertTrue(api.listCloudFiles("0", savedCookie).isNullOrEmpty())

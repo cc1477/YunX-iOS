@@ -38,6 +38,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
+import com.yunx.app.util.DiagnosticLog
 
 /** 夸克云盘浏览 UI 状态 */
 sealed interface QuarkCloudUiState {
@@ -65,6 +68,7 @@ class QuarkCloudViewModel(
 
     private val _uiState = MutableStateFlow<QuarkCloudUiState>(QuarkCloudUiState.Loading)
     val uiState: StateFlow<QuarkCloudUiState> = _uiState.asStateFlow()
+    private var loadJob: Job? = null
 
     /** 当前操作的文件（更多按钮弹出操作菜单） */
     var actionFile by mutableStateOf<ShareFile?>(null)
@@ -746,17 +750,24 @@ class QuarkCloudViewModel(
     }
 
     private fun load(dirFid: String, pathNames: List<String>) {
+        loadJob?.cancel()
         _uiState.value = QuarkCloudUiState.Loading
-        viewModelScope.launch {
-            val cookie = cookieProvider()
-            if (cookie.isNullOrBlank()) {
-                _uiState.value = QuarkCloudUiState.Error("请先登录夸克网盘")
-                return@launch
-            }
+        loadJob = viewModelScope.launch {
             try {
+                DiagnosticLog.event(DiagnosticLog.OPERATION, "quark_drive_load_started", "root=" + (dirFid == "0"))
+                val cookie = cookieProvider()
+                if (cookie.isNullOrBlank()) {
+                    DiagnosticLog.warn(DiagnosticLog.OPERATION, "quark_drive_missing_account")
+                    _uiState.value = QuarkCloudUiState.Error("请先登录夸克网盘")
+                    return@launch
+                }
                 val files = api.listCloudFiles(dirFid, cookie) ?: emptyList()
+                DiagnosticLog.log(DiagnosticLog.OPERATION, "quark_drive_loaded", size = files.size.toLong())
                 _uiState.value = QuarkCloudUiState.Loaded(files, pathNames, dirFid)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
+                DiagnosticLog.exception(DiagnosticLog.OPERATION, "quark_drive_failed", e)
                 _uiState.value = QuarkCloudUiState.Error(e.message ?: "加载失败")
             }
         }

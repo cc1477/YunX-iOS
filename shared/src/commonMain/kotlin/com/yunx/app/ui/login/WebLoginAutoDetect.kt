@@ -24,10 +24,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import com.yunx.app.ui.SnackbarController
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import com.yunx.app.util.DiagnosticLog
 
 /** 自动登录检测：轮询网页登录凭证的间隔 */
 private const val AUTO_DETECT_POLL_MS = 1_500L
@@ -73,19 +75,26 @@ fun rememberWebLoginAutoDetect(
     // 最近一次「校验失败」的凭证原文与时间：相同凭证不立即重打接口，等凭证变化或超时后再试
     var lastFailedCredential by remember { mutableStateOf("") }
     var lastFailedTs by remember { mutableLongStateOf(0L) }
+    val sample by rememberUpdatedState(sampleCredential)
+    val plausible by rememberUpdatedState(isPlausible)
+    val validate by rememberUpdatedState(validateAndSave)
+    val paused by rememberUpdatedState(isPaused)
+    val inFlight by rememberUpdatedState(onInFlightChange)
+    val autoSaved by rememberUpdatedState(onAutoSaved)
 
     LaunchedEffect(Unit) {
         while (!finished) {
             delay(AUTO_DETECT_POLL_MS)
-            if (finished || isPaused()) continue
+            if (finished || paused()) continue
             val credential = try {
-                sampleCredential()
+                sample()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                DiagnosticLog.exception(DiagnosticLog.WEBVIEW, "credential_sample_failed", e)
                 null
             }
-            if (credential.isNullOrBlank() || !isPlausible(credential)) continue
+            if (credential.isNullOrBlank() || !plausible(credential)) continue
 
             val now = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
             // 同一份凭证刚校验失败过：跳过（登录中间态的值一般是临时的，等页面写入最终凭证）
@@ -99,19 +108,23 @@ fun rememberWebLoginAutoDetect(
             lastValidateTs = now
             // 上锁：校验期间不再轮询，也避免与手动「保存」同时写库
             finished = true
-            onInFlightChange(true)
+            inFlight(true)
+            DiagnosticLog.event(DiagnosticLog.OPERATION, "auto_login_validate_started")
             val saved = try {
-                validateAndSave(credential)
+                validate(credential)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                DiagnosticLog.exception(DiagnosticLog.OPERATION, "auto_login_exception", e)
                 false
+            } finally {
+                inFlight(false)
             }
             // 结束校验：恢复「保存」按钮可用（页面随后关闭，或回到轮询）
-            onInFlightChange(false)
+            DiagnosticLog.log(DiagnosticLog.OPERATION, "auto_login_validate_finished", status = if (saved) "saved" else "rejected")
             if (saved) {
                 SnackbarController.show("登录成功")
-                onAutoSaved()
+                autoSaved()
             } else {
                 // 中间态/凭证无效：记下原文继续轮询，凭证变化或超时后才会重试
                 lastFailedCredential = credential

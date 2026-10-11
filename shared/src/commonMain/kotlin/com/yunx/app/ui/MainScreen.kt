@@ -651,7 +651,7 @@ fun MainScreen(
         QuarkLoginScreen(
             viewModel = viewModel,
             onBack = { showQuarkLogin = false },
-            onSaved = { showQuarkLogin = false }
+            onSaved = { showQuarkLogin = false; quarkCloudViewModel.loadRoot() }
         )
         return
     }

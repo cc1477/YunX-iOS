@@ -110,4 +110,9 @@ object QuarkConstants {
         val fields = cookie.split(';').map { it.trim().substringBefore('=') to it.trim().substringAfter('=', "") }.toMap()
         return !fields["__pus"].isNullOrBlank() && !fields["__puus"].isNullOrBlank()
     }
+
+    /** A principal can bootstrap a missing session, but only server verification authorizes saving. */
+    fun hasLoginPrincipal(cookie: String?): Boolean =
+        !cookie.isNullOrBlank() && cookie.none { it.code < 32 || it.code == 127 } &&
+            cookie.split(';').any { it.trim().substringBefore('=') == "__pus" && it.trim().substringAfter('=', "").isNotBlank() }
 }

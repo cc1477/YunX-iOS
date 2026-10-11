@@ -37,7 +37,7 @@ object LogExporter {
             if (files.isEmpty()) return null
             val target = (appCacheDir() + "/yunx_logs_${Clock.System.now().toEpochMilliseconds()}.txt").toPath()
             fs.write(target) {
-                for (file in files) { writeUtf8("=== ${file.name} ===\n"); fs.source(file).use { source -> writeAll(source) } }
+                for (file in files) { writeUtf8("=== ${file.name} ===\n"); writeUtf8(LogRedactor.line(fs.read(file) { readUtf8() })) }
             }
             target
         }.getOrNull()
@@ -48,19 +48,24 @@ object LogExporter {
         FileSystem.SYSTEM.copy(source, target); true
     }.getOrDefault(false)
     suspend fun exportDiagnosticZip(): Path? = DiagnosticLog.exportZip()
+    suspend fun exportDiagnosticToDownloads(): Path? {
+        val source = exportDiagnosticZip() ?: return null
+        val folder = appDownloadDir().toPath()
+        FileSystem.SYSTEM.createDirectories(folder)
+        return (folder / source.name).also { FileSystem.SYSTEM.copy(source, it) }
+    }
     // No system logcat on iOS. App log deletion is explicit and limited to this directory.
     fun clearLogcat(): Boolean = runCatching {
         FileSystem.SYSTEM.list(DiagnosticLog.dirOf()).forEach { FileSystem.SYSTEM.delete(it) }; true
     }.getOrDefault(false)
-    /** Stage 4 will present the native share sheet; for now use the platform URL opener. */
-    fun share(file: Path): Boolean = openUrl("file://$file")
+    suspend fun share(file: Path): Boolean = shareDiagnosticFile(file.toString())
 }
 /** Portable ZIP using stored entries (bounded diagnostic logs do not need compression). */
 internal fun writeLogZip(files: List<Path>, target: Path) {
     val output = Buffer(); val directory = Buffer()
     for (file in files) {
         val name = file.name.encodeToByteArray()
-        val data = FileSystem.SYSTEM.read(file) { readByteArray() }
+        val data = LogRedactor.line(FileSystem.SYSTEM.read(file) { readUtf8() }).encodeToByteArray()
         val crc = crc32(data).toInt(); val offset = output.size.toInt()
         output.writeIntLe(0x04034b50).writeShortLe(20).writeShortLe(0x800).writeShortLe(0)
             .writeShortLe(0).writeShortLe(33).writeIntLe(crc).writeIntLe(data.size).writeIntLe(data.size)

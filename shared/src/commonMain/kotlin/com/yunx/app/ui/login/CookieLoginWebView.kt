@@ -52,6 +52,26 @@ internal fun loginCookieDomains(url: String): List<String> {
     return listOf(root).filter { it.isNotBlank() }
 }
 
+internal data class LoginCookie(val name: String, val value: String, val domain: String, val path: String,
+    val expiresAt: Long? = null)
+
+/** Prefer cookies applicable to the API rather than unrelated sibling-host cookies with the same name. */
+internal fun selectLoginCookies(cookies: List<LoginCookie>, url: String, domains: List<String>, now: Long): Map<String, String> {
+    val login = io.ktor.http.Url(url)
+    return cookies.filter { isLoginHost(it.domain.removePrefix("."), domains) && (it.expiresAt == null || it.expiresAt > now) }
+        .groupBy { it.name }.mapNotNull { (name, entries) ->
+            val quarkSession = login.host.endsWith("quark.cn") && name in setOf("__pus", "__puus")
+            val host = if (quarkSession) "drive-pc.quark.cn" else login.host
+            val path = if (quarkSession) "/1/clouddrive/file/sort" else login.encodedPath
+            val chosen = entries.filter { cookie -> path == cookie.path || path.startsWith(cookie.path.trimEnd('/') + "/") }
+                .maxWithOrNull(compareBy<LoginCookie> {
+                    if (quarkSession && it.domain.removePrefix(".") == "quark.cn") 2
+                    else if (host == it.domain.removePrefix(".") || it.domain.startsWith(".") && host.endsWith(it.domain)) 1 else 0
+                }.thenBy { it.domain.length }.thenBy { it.path.length }.thenBy { it.expiresAt ?: Long.MAX_VALUE }.thenBy { it.value })
+            chosen?.let { name to it.value }
+        }.sortedBy { it.first }.toMap()
+}
+
 @Composable
 fun CookieLoginWebView(url: String, loginDomains: List<String>, onCookies: (Map<String, String>) -> Unit) {
     androidx.compose.runtime.CompositionLocalProvider(LocalCookieLoginDomains provides loginDomains) {

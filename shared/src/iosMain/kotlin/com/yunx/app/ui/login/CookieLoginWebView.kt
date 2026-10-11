@@ -25,6 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.interop.UIKitViewController
 import kotlinx.cinterop.cValue
 import kotlinx.coroutines.delay
+import com.yunx.app.util.DiagnosticLog
+import com.yunx.app.data.network.QuarkConstants
 import platform.Foundation.*
 import platform.UIKit.UIViewController
 import platform.WebKit.*
@@ -47,13 +49,30 @@ actual fun CookieLoginWebView(url: String, onCookies: (Map<String, String>) -> U
     val cookieStore = remember(url) { WKWebsiteDataStore.defaultDataStore().httpCookieStore }
     val cookieObserver = remember(url, domains) { object : NSObject(), WKHTTPCookieStoreObserverProtocol {
         var active = false
+        var reading = false
+        var lastCookies: Map<String, String>? = null
         fun readCookies() {
-            if (!active) return
+            if (!active || reading) return
+            reading = true
             cookieStore.getAllCookies { cookies ->
-                val scoped = cookies.orEmpty().filterIsInstance<NSHTTPCookie>().filter { cookie ->
-                    isLoginHost(cookie.domain.removePrefix("."), domains)
-                }.associate { it.name to it.value }
-                NSOperationQueue.mainQueue.addOperationWithBlock { if (active) callback.value(scoped) }
+                NSOperationQueue.mainQueue.addOperationWithBlock {
+                    reading = false
+                    if (active) {
+                        val snapshots = cookies.orEmpty().filterIsInstance<NSHTTPCookie>().map {
+                            LoginCookie(it.name, it.value, it.domain, it.path, it.expiresDate?.timeIntervalSince1970?.times(1000)?.toLong())
+                        }
+                        val scoped = selectLoginCookies(snapshots, url, domains, kotlinx.datetime.Clock.System.now().toEpochMilliseconds())
+                        if (scoped != lastCookies) {
+                            lastCookies = scoped
+                            val credential = scoped.entries.joinToString("; ") { it.key + "=" + it.value }
+                            DiagnosticLog.webview("cookies_changed", url,
+                                summary = "count=" + scoped.size + " | hasPrincipal=" + QuarkConstants.hasLoginPrincipal(credential) +
+                                    " | hasSession=" + QuarkConstants.isValidCookie(credential) +
+                                    " | duplicateNames=" + snapshots.filter { isLoginHost(it.domain.removePrefix("."), domains) }.groupBy { it.name }.count { it.value.size > 1 })
+                            callback.value(scoped)
+                        }
+                    }
+                }
             }
         }
         override fun cookiesDidChangeInCookieStore(cookieStore: WKHTTPCookieStore) { readCookies() }
@@ -61,7 +80,16 @@ actual fun CookieLoginWebView(url: String, onCookies: (Map<String, String>) -> U
     val delegate = remember(url, domains, cookieObserver) { object : NSObject(), WKNavigationDelegateProtocol {
         override fun webView(webView: WKWebView, didFinishNavigation: WKNavigation?) {
             DiagnosticWebViewClient.navigationCompleted(webView.URL?.host.orEmpty())
+            DiagnosticLog.webview("navigation_finished", webView.URL?.absoluteString)
             cookieObserver.readCookies()
+        }
+        override fun webView(webView: WKWebView, didFailProvisionalNavigation: WKNavigation?, withError: NSError) {
+            DiagnosticLog.webview("navigation_start_failed", webView.URL?.absoluteString, withError.code,
+                "errorDomain=" + withError.domain)
+        }
+        override fun webView(webView: WKWebView, didFailNavigation: WKNavigation?, withError: NSError) {
+            DiagnosticLog.webview("navigation_failed", webView.URL?.absoluteString, withError.code,
+                "errorDomain=" + withError.domain)
         }
         override fun webView(webView: WKWebView, decidePolicyForNavigationAction: WKNavigationAction,
             decisionHandler: (WKNavigationActionPolicy) -> Unit) {
@@ -84,12 +112,16 @@ actual fun CookieLoginWebView(url: String, onCookies: (Map<String, String>) -> U
     // QR login updates localStorage in the same SPA document without a navigation callback.
     LaunchedEffect(webView) {
         while (true) {
+            cookieObserver.readCookies()
             val reader = tokenReader.value
             val host = webView.URL?.host.orEmpty()
             if (reader != null && webView.URL?.scheme == "https" && isLoginHost(host, domains)) {
                 webView.evaluateJavaScript(webLoginTokenScript(reader.key)) { result, error ->
                     if (error == null && isLoginHost(webView.URL?.host.orEmpty(), domains)) {
                         (result as? String)?.let(::normalizeWebLoginToken)?.let { tokenReader.value?.onToken?.invoke(it) }
+                    } else if (error != null) {
+                        DiagnosticLog.webview("token_read_failed", webView.URL?.absoluteString, error.code,
+                            "errorDomain=" + error.domain)
                     }
                 }
             }
@@ -99,10 +131,12 @@ actual fun CookieLoginWebView(url: String, onCookies: (Map<String, String>) -> U
     DisposableEffect(webView, cookieObserver) {
         // SPA/QR login can update HttpOnly cookies without finishing a navigation.
         cookieObserver.active = true
+        DiagnosticLog.webview("login_webview_opened", url)
         cookieStore.addObserver(cookieObserver)
         cookieObserver.readCookies()
         onDispose {
             cookieObserver.active = false
+            DiagnosticLog.webview("login_webview_closed", url)
             cookieStore.removeObserver(cookieObserver)
             webView.stopLoading()
             webView.navigationDelegate = null

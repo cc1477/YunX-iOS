@@ -44,6 +44,8 @@ object DiagnosticLog {
     private var enabled = false
     private var windowStart = 0L
     private var windowCount = 0
+    private var droppedLines = 0L
+    private val session = kotlin.random.Random.nextLong().toString(16)
     private data class Entry(val module: String, val time: Long, val level: String, val line: String)
     private sealed interface Message {
         data class Line(val entry: Entry): Message
@@ -61,20 +63,26 @@ object DiagnosticLog {
         }
     }
     fun install() { FileSystem.SYSTEM.createDirectories(dirOf()) }
-    fun setEnabled(value: Boolean) { locked(lock) { enabled = value }; if (value) install() }
+    fun setEnabled(value: Boolean) {
+        locked(lock) { enabled = value }
+        if (value) {
+            install()
+            event(OPERATION, "diagnostics_enabled", "session=$session | " + diagnosticEnvironment())
+        }
+    }
     fun isEnabled(): Boolean = locked(lock) { enabled }
     fun dirOf(): Path = (appDataDir() + "/diagnostic_logs").toPath()
     fun hasLogs(): Boolean = runCatching { FileSystem.SYSTEM.list(dirOf()).any { it.name.endsWith(".log") } }.getOrDefault(false)
-    suspend fun flush(timeoutMs: Long = 2000L) {
+    suspend fun flush(timeoutMs: Long = 2000L): Boolean =
         withTimeoutOrNull(timeoutMs) {
             val done = CompletableDeferred<Unit>()
             queue.send(Message.Barrier(done)); done.await()
-        }
-    }
+            true
+        } ?: false
     private fun allow(): Boolean = locked(lock) {
         val now = Clock.System.now().toEpochMilliseconds()
         if (now - windowStart >= 1000) { windowStart = now; windowCount = 0 }
-        windowCount++ < MAX_LINES_PER_SECOND
+        (windowCount++ < MAX_LINES_PER_SECOND).also { if (!it) droppedLines++ }
     }
     fun log(
         module: String,
@@ -96,8 +104,10 @@ object DiagnosticLog {
         if (costMs != null) sb.append(" | cost=").append(costMs).append("ms")
         if (size != null) sb.append(" | size=").append(size)
         if (code != null) sb.append(" | code=").append(code)
-        if (!summary.isNullOrBlank()) sb.append(" | ").append(summary.replace('\n', ' ').take(600))
-        queue.trySend(Message.Line(Entry(module, Clock.System.now().toEpochMilliseconds(), level, LogRedactor.line(sb.toString()))))
+        if (!summary.isNullOrBlank()) sb.append(" | ").append(LogRedactor.line(summary).replace('\n', ' ').take(3500))
+        if (queue.trySend(Message.Line(Entry(module, Clock.System.now().toEpochMilliseconds(), level, LogRedactor.line(sb.toString())))).isFailure) {
+            locked(lock) { droppedLines++ }
+        }
     }
 
     /** 简写：INFO 级、无附加字段 */
@@ -109,6 +119,15 @@ object DiagnosticLog {
 
     fun error(module: String, event: String, code: Any? = null, summary: String? = null) =
         log(module, event, level = LEVEL_ERROR, code = code, summary = summary)
+
+    /** Exception messages can contain credentials; retain types and source locations only. */
+    fun exception(module: String, event: String, failure: Throwable) {
+        val causes = generateSequence(failure) { it.cause?.takeUnless { cause -> cause === it } }
+            .take(4).map { it::class.simpleName.orEmpty() }.joinToString(" -> ")
+        val frames = failure.stackTraceToString().lineSequence().filter { it.trimStart().startsWith("at ") }
+            .take(16).joinToString(" | ") { it.trim() }
+        error(module, event, code = causes, summary = frames)
+    }
 
     /** 数据库读写：表名 / 操作 / 耗时 / 影响行数 / 错误 */
     fun db(table: String, op: String, costMs: Long, rows: Int = -1, error: String? = null, summary: String? = null) {
@@ -145,15 +164,14 @@ object DiagnosticLog {
         }
     }
 
-    /** 网络请求：方法 / URL（已脱敏）/ 状态码 / 耗时 / 请求体与响应体摘要 */
+    /** Network metadata only; payloads are deliberately omitted. */
     fun network(
         method: String,
         url: String,
         code: Int,
         costMs: Long,
-        requestBody: String? = null,
-        responseBody: String? = null,
-        error: String? = null
+        error: String? = null,
+        requestId: Int? = null
     ) {
         log(
             NETWORK,
@@ -161,13 +179,11 @@ object DiagnosticLog {
             level = if (error != null || code !in 200..299) LEVEL_WARN else LEVEL_INFO,
             status = if (error != null) "failed" else "http_$code",
             costMs = costMs,
+            taskId = requestId,
             code = code,
             summary = buildString {
                 append(method).append(' ').append(LogRedactor.url(url))
                 if (error != null) append(" | err=").append(error)
-                // 请求体/响应体只在「解析错误、非 200/206」时记（见 DiagnosticNetworkInterceptor）
-                if (!requestBody.isNullOrBlank()) append(" | req=").append(oneLine(requestBody))
-                if (!responseBody.isNullOrBlank()) append(" | resp=").append(oneLine(responseBody))
             }
         )
     }
@@ -211,15 +227,27 @@ object DiagnosticLog {
         }
     }
     suspend fun exportZip(): Path? {
-        flush(3000)
+        install()
+        val flushed = flush(3000)
         return runCatching { locked(fileLock) {
             val fs = FileSystem.SYSTEM
-            val files = fs.list(dirOf()).filter { it.name.endsWith(".log") }
-            if (files.isEmpty()) return@locked null
+            val files = fs.list(dirOf()).filter { it.name.endsWith(".log") }.sortedBy { it.name }
+            val info = (appCacheDir() + "/diagnostics-info.txt").toPath()
+            fs.write(info) { writeUtf8(buildString {
+                appendLine("YunX diagnostic export — schema 2")
+                appendLine(diagnosticEnvironment())
+                appendLine("exportedAt=" + Clock.System.now() + " (UTC)")
+                appendLine("session=$session")
+                appendLine("recording=" + isEnabled() + " | flushed=$flushed | droppedLines=" + locked(lock) { droppedLines })
+                appendLine("Log timestamps are Unix milliseconds. History is limited to 10 MiB.")
+                appendLine("Credentials, full URLs and payloads are omitted; old logs are redacted again on export.")
+                appendLine("No log files means recording was not enabled or no operation was captured.")
+                appendLine("请同时提供：出错平台、操作步骤、错误出现时间、界面提示、网络类型（Wi-Fi/蜂窝）、是否使用代理。")
+                appendLine("不要附上密码、Cookie、Token 或验证码。")
+            }) }
             val target = (appCacheDir() + "/yunx_diagnostic_logs_${Clock.System.now().toEpochMilliseconds()}.zip").toPath()
-            writeLogZip(files, target)
+            writeLogZip(listOf(info) + files, target)
             target
         } }.getOrNull()
     }
-    private fun oneLine(text: String): String = LogRedactor.line(text.replace('\n', ' ').replace('\r', ' ')).take(1500)
 }

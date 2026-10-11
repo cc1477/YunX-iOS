@@ -33,6 +33,10 @@ import com.yunx.app.data.prefs.SettingsRepository
 import com.yunx.app.platform.*
 import com.yunx.app.ui.theme.ThemeController
 import com.yunx.app.util.AppLinks
+import com.yunx.app.util.DiagnosticLog
+import com.yunx.app.util.LogExporter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
@@ -52,6 +56,8 @@ fun SettingsScreen(scrollBehavior: TopAppBarScrollBehavior,
     var busy by remember { mutableStateOf(false) }
     var advanced by remember { mutableStateOf(false) }
     var platformThreadsExpanded by remember { mutableStateOf(false) }
+    var exportingLogs by remember { mutableStateOf(false) }
+    var logResult by remember { mutableStateOf("") }
     Column(modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)
         .verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("下载", style = MaterialTheme.typography.titleLarge)
@@ -116,6 +122,31 @@ fun SettingsScreen(scrollBehavior: TopAppBarScrollBehavior,
             TextButton(enabled = backup.isNotBlank() && !busy, onClick = { scope.launch { result = if (backupManager.saveToDownloads(backup, password.isNotBlank())) "已保存至 App 下载目录" else "保存失败" } }) { Text("保存备份") }
         }
         result.takeIf(String::isNotBlank)?.let { Text(it) }
+        Text("问题诊断", style = MaterialTheme.typography.titleLarge)
+        PreferenceSwitch("记录诊断日志", settings.diagnosticMode) {
+            settings.diagnosticMode = it
+            DiagnosticLog.setEnabled(it)
+        }
+        Text("先开启记录，再重现登录、解析或下载问题，最后导出日志。日志自动隐藏登录凭证。")
+        Button(enabled = !exportingLogs, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), onClick = {
+            exportingLogs = true
+            scope.launch {
+                try {
+                    DiagnosticLog.event(DiagnosticLog.OPERATION, "export_requested")
+                    val file = withContext(Dispatchers.Default) {
+                        LogExporter.exportDiagnosticToDownloads()
+                    }
+                    logResult = if (file == null) "导出失败，请重试"
+                        else if (LogExporter.share(file)) "日志已保存至 Downloads，可通过分享菜单发送或存储。"
+                        else "日志已保存：在「文件」App → 我的 iPhone → YunX → Downloads 中查找。"
+                } catch (e: CancellationException) { throw e }
+                catch (e: Exception) {
+                    DiagnosticLog.exception(DiagnosticLog.OPERATION, "export_failed", e)
+                    logResult = "导出失败，请重试"
+                } finally { exportingLogs = false }
+            }
+        }) { Text(if (exportingLogs) "正在导出…" else "导出诊断日志") }
+        if (logResult.isNotBlank()) Text(logResult, style = MaterialTheme.typography.bodyMedium)
         Text("关于", style = MaterialTheme.typography.titleLarge)
         Button(onClick = { openUrl(AppLinks.IOS_DISTRIBUTION) }) { Text("获取最新 iOS 版本") }
         Button(onClick = onAboutClick, modifier = aboutRowModifier) { Text("关于云析") }
@@ -128,7 +159,6 @@ fun SettingsScreen(scrollBehavior: TopAppBarScrollBehavior,
                 ThemeController.setDownloadDebug(it)
                 com.yunx.app.data.download.DownloadDebugLog.setEnabled(it)
             }
-            PreferenceSwitch("诊断日志", settings.diagnosticMode) { settings.diagnosticMode = it; com.yunx.app.util.DiagnosticLog.setEnabled(it) }
         }
     }
 }

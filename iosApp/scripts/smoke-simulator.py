@@ -69,6 +69,29 @@ def main():
         simctl("ui", udid, "appearance", "dark")
         time.sleep(3)
         simctl("io", udid, "screenshot", str(screenshot.with_name(screenshot.stem + "-large-dark.png")))
+        # Exercise the actual iOS exporter and share sheet using synthetic credentials only.
+        simctl("terminate", udid, "com.yunx.app.ios")
+        simctl("ui", udid, "appearance", "light")
+        simctl("ui", udid, "content_size", "large")
+        simctl("launch", udid, "com.yunx.app.ios", "--diagnostic-export-test")
+        container = pathlib.Path(simctl("get_app_container", udid, "com.yunx.app.ios", "data"))
+        marker = container / "Library/Caches/YunX/diagnostic-export-test.json"
+        deadline = time.monotonic() + 40
+        while not marker.exists() and time.monotonic() < deadline:
+            time.sleep(1)
+        result = json.loads(marker.read_text())
+        assert all(result.get(key) for key in ("exported", "shareRequested", "sharePresented")), result
+        import zipfile
+        exported = list((container / "Documents/Downloads").glob("yunx_diagnostic_logs_*.zip"))
+        assert len(exported) == 1, exported
+        with zipfile.ZipFile(exported[0]) as package:
+            assert package.testzip() is None
+            content = "\n".join(package.read(name).decode() for name in package.namelist())
+            assert "native_export_test" in content and "schema 2" in content
+            assert "native-secret" not in content and "second-secret" not in content
+        simctl("io", udid, "screenshot", str(screenshot.with_name(screenshot.stem + "-diagnostic-share.png")))
+        shutil.copy2(exported[0], screenshot.parent / "YunX-diagnostic-sample.zip")
+        print("Native diagnostic ZIP integrity, redaction and UIKit share sheet passed.", flush=True)
     except Exception:
         diagnostics = screenshot.parent / "startup-diagnostics"
         diagnostics.mkdir(parents=True, exist_ok=True)

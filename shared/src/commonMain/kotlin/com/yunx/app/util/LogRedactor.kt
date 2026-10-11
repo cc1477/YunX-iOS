@@ -1,46 +1,15 @@
-/*
- * YunX (云析) - A network drive share-link parser and high-speed downloader for Android.
- * Copyright (C) 2026 CYQawa
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
-@file:OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
-
 package com.yunx.app.util
 
-import com.yunx.app.platform.*
-import com.yunx.app.data.network.*
+import io.ktor.http.Url
 import kotlinx.serialization.json.*
-import kotlinx.datetime.*
-import io.ktor.client.HttpClient
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.client.call.*
-import io.ktor.http.*
-import io.ktor.client.request.forms.*
-import kotlin.random.Random
-import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
 
-
-/** Redacts capability-bearing URL paths, queries, fragments and user info. */
+/** Exported diagnostics must never contain credentials or capability URLs. */
 object LogRedactor {
     private val absoluteUrl = Regex("""https?://[^\s\"'<>]+""", RegexOption.IGNORE_CASE)
-    private val secretAssignment = Regex(
-        """(?i)\b(cookie|authorization|access[_-]?token|refresh[_-]?token|captcha[_-]?token|bduss|stoken|__puus|__pus|rmkey|signature|sign)\b(\s*[=:]\s*)([^\s,;]+)"""
-    )
+    private const val secrets = "cookie|set-cookie|authorization|proxy-authorization|.*token|.*password|passwd|pwd|passcode|captcha|otp|verification_code|phone|mobile|bduss|stoken|__p[a-z]+|rmkey|signature|sign|secret|credential|session[_-]?id"
+    private val secretKey = Regex("^(?:$secrets)$", RegexOption.IGNORE_CASE)
+    private val header = Regex("""(?im)\b(cookie|set-cookie|authorization|proxy-authorization)\s*[:=]\s*[^\r\n]+""")
+    private val assignment = Regex("""(?i)([\"']?\b(?:[\w-]*token|[\w-]*password|passwd|pwd|passcode|captcha|otp|verification_code|phone|mobile|bduss|stoken|__p[a-z]+|rmkey|signature|sign|secret|credential|session[_-]?id)\b[\"']?\s*[:=]\s*)(\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'|[^\s,;|}]+)""")
 
     fun url(value: Any?): String {
         val raw = value?.toString()?.takeIf { it.isNotBlank() } ?: return "<none>"
@@ -55,10 +24,28 @@ object LogRedactor {
         }.getOrDefault("<invalid-url>")
     }
 
+    private fun redactJson(element: JsonElement): JsonElement = when (element) {
+        is JsonObject -> JsonObject(element.mapValues { (key, value) ->
+            if (secretKey.matches(key)) JsonPrimitive("<redacted>") else redactJson(value)
+        })
+        is JsonArray -> JsonArray(element.map(::redactJson))
+        is JsonPrimitive -> if (element.isString) JsonPrimitive(text(element.content)) else element
+        else -> element
+    }
+
+    private fun text(value: String): String {
+        val withoutPayloads = Regex("""(?im)\b(req|resp)\s*=\s*[^\r\n]*""").replace(value) { "${it.groupValues[1]}=<omitted>" }
+        val withoutHeaders = header.replace(withoutPayloads) { "${it.groupValues[1]}=<redacted>" }
+        val withoutSecrets = assignment.replace(withoutHeaders) { "${it.groupValues[1]}<redacted>" }
+        return absoluteUrl.replace(withoutSecrets) { url(it.value) }
+            .replace(Regex("(?<![0-9])1[3-9][0-9]{9}(?![0-9])"), "<phone>")
+    }
+
     fun line(value: String): String {
-        val withoutUrls = absoluteUrl.replace(value) { match -> url(match.value) }
-        return secretAssignment.replace(withoutUrls) { match ->
-            "${match.groupValues[1]}${match.groupValues[2]}<redacted>"
+        val trimmed = value.trim()
+        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+            runCatching { Json.parseToJsonElement(trimmed) }.getOrNull()?.let { return redactJson(it).toString() }
         }
+        return text(value)
     }
 }

@@ -116,5 +116,6 @@ jobs:
           path: |
             iosApp/build/YunX-simulator.zip
             iosApp/build/YunX-startup*.png
+            iosApp/build/YunX-diagnostic-sample.zip
           if-no-files-found: error
           retention-days: 7
