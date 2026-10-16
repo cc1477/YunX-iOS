@@ -24,65 +24,39 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-/**
- * 系统字体与 iOS 阅读层级。sp 由 Compose 1.8.2 的系统 fontScale 缩放，不再叠加缩放。
- */
-val Typography = Typography(
-    // 正文使用 17sp；辅助文字保持可读，字距交给系统字体。
-    headlineMedium = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 28.sp,
-        lineHeight = 34.sp,
-        letterSpacing = 0.sp
-    ),
-    titleLarge = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
-        letterSpacing = 0.sp
-    ),
-    titleMedium = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Medium,
-        fontSize = 17.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.sp
-    ),
-    bodyLarge = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Normal,
-        fontSize = 17.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.sp
-    ),
-    bodyMedium = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Normal,
-        fontSize = 15.sp,
-        lineHeight = 21.sp,
-        letterSpacing = 0.sp
-    ),
-    labelLarge = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Medium,
-        fontSize = 14.sp,
-        lineHeight = 18.sp,
-        letterSpacing = 0.sp
-    ),
-    labelMedium = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Medium,
-        fontSize = 12.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.sp
-    ),
-    labelSmall = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Medium,
-        fontSize = 12.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.sp
-    )
+/** UIKit supplies Dynamic Type scale; the default family resolves to the platform system font. */
+private fun systemTextStyle(size: Int, height: Int, weight: FontWeight = FontWeight.Normal) = TextStyle(
+    fontFamily = FontFamily.Default, fontWeight = weight,
+    fontSize = size.sp, lineHeight = height.sp, letterSpacing = 0.sp
 )
+
+val Typography = Typography(
+    displayLarge = systemTextStyle(40, 48, FontWeight.Bold),
+    displayMedium = systemTextStyle(36, 44, FontWeight.Bold),
+    displaySmall = systemTextStyle(32, 40, FontWeight.Bold),
+    headlineLarge = systemTextStyle(34, 41, FontWeight.Bold),
+    headlineMedium = systemTextStyle(28, 34, FontWeight.SemiBold),
+    headlineSmall = systemTextStyle(24, 30, FontWeight.SemiBold),
+    titleLarge = systemTextStyle(22, 28, FontWeight.SemiBold),
+    titleMedium = systemTextStyle(17, 24, FontWeight.SemiBold),
+    titleSmall = systemTextStyle(15, 21, FontWeight.SemiBold),
+    bodyLarge = systemTextStyle(17, 24),
+    bodyMedium = systemTextStyle(15, 21),
+    bodySmall = systemTextStyle(13, 18),
+    labelLarge = systemTextStyle(15, 20, FontWeight.Medium),
+    labelMedium = systemTextStyle(12, 16, FontWeight.Medium),
+    labelSmall = systemTextStyle(11, 14, FontWeight.Medium)
+)
+
+internal fun Typography.withSystemBoldText(enabled: Boolean): Typography {
+    if (!enabled) return this
+    fun TextStyle.emphasized() = copy(fontWeight =
+        if ((fontWeight ?: FontWeight.Normal) >= FontWeight.SemiBold) FontWeight.Bold else FontWeight.SemiBold)
+    return copy(
+        displayLarge = displayLarge.emphasized(), displayMedium = displayMedium.emphasized(), displaySmall = displaySmall.emphasized(),
+        headlineLarge = headlineLarge.emphasized(), headlineMedium = headlineMedium.emphasized(), headlineSmall = headlineSmall.emphasized(),
+        titleLarge = titleLarge.emphasized(), titleMedium = titleMedium.emphasized(), titleSmall = titleSmall.emphasized(),
+        bodyLarge = bodyLarge.emphasized(), bodyMedium = bodyMedium.emphasized(), bodySmall = bodySmall.emphasized(),
+        labelLarge = labelLarge.emphasized(), labelMedium = labelMedium.emphasized(), labelSmall = labelSmall.emphasized()
+    )
+}

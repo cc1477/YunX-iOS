@@ -27,6 +27,9 @@ import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
@@ -347,20 +350,38 @@ fun ComposeEmptyActivityTheme(
         // 自定义种子色（预选色 / 颜色卡自选）：基于种子色生成完整 Material3 方案
         ThemeController.colorMode == 2 -> seedColorScheme(ThemeController.seedColor, isDark)
         // 默认蓝色（低版本动态色彩不可用时也回退到这里）
-        isDark -> darkScheme
-        else -> lightScheme
+        isDark -> darkScheme.copy(
+            primary = Color(0xFF64A6FF), onPrimary = Color(0xFF001B3D),
+            background = Color.Black, surface = Color.Black, onSurface = Color(0xFFF2F2F7),
+            onSurfaceVariant = Color(0xFFAEAEB2), outline = Color(0xFF636366), outlineVariant = Color(0xFF38383A),
+            surfaceContainerLowest = Color(0xFF1C1C1E), surfaceContainerLow = Color(0xFF1C1C1E),
+            surfaceContainer = Color(0xFF1C1C1E), surfaceContainerHigh = Color(0xFF2C2C2E),
+            surfaceContainerHighest = Color(0xFF3A3A3C)
+        )
+        else -> lightScheme.copy(
+            primary = Color(0xFF0064D2), onPrimary = Color.White,
+            background = Color(0xFFF2F2F7), surface = Color(0xFFF2F2F7), onSurface = Color(0xFF1C1C1E),
+            onSurfaceVariant = Color(0xFF636366), outline = Color(0xFF8E8E93), outlineVariant = Color(0xFFD1D1D6),
+            surfaceContainerLowest = Color.White, surfaceContainerLow = Color.White,
+            surfaceContainer = Color.White, surfaceContainerHigh = Color(0xFFE5E5EA),
+            surfaceContainerHighest = Color(0xFFD1D1D6)
+        )
     }
 
     // Material 3 Expressive 主题入口：一次性注入 colorScheme / motionScheme / shapes / typography，
     // 并置 LocalUsingExpressiveTheme=true —— 所有 M3 组件据此切换到 Expressive 形态
     // （尺寸、圆角、形变、弹簧动效），无需逐个组件改造。
     // 颜色部分完全沿用原有逻辑（动态取色 / 种子色 / 深浅色 / 对比度方案），Expressive 不改变颜色角色。
+    val systemText = rememberSystemTextPreferences()
+    val density = LocalDensity.current
+    CompositionLocalProvider(LocalDensity provides Density(density.density, systemText.scale)) {
     androidx.compose.material3.MaterialTheme(
         colorScheme = colorScheme,
         shapes = ExpressiveShapes,
-        typography = Typography,
+        typography = Typography.withSystemBoldText(systemText.bold),
         content = content
     )
+    }
 }
 
 @Composable

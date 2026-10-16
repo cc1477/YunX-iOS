@@ -64,6 +64,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarScrollBehavior
@@ -143,7 +146,9 @@ fun ResolveScreen(
     bookmarkViewModel: BookmarkViewModel,
     /** 打开「收藏网盘链接」页（主页快捷方式区块的「管理」入口） */
     onOpenBookmarks: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    sharedText: String? = null,
+    onSharedTextConsumed: () -> Unit = {}
 ) {
     val state = viewModel.uiState
     val downloadLink = viewModel.downloadLink
@@ -161,6 +166,18 @@ fun ResolveScreen(
     var link by rememberSaveable { mutableStateOf("") }
     var pwd by rememberSaveable { mutableStateOf("") }
     var pwdEdited by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(sharedText) {
+        sharedText?.let { text ->
+            link = text
+            pwd = ShareLinkParser.parse(text)?.pwd.orEmpty()
+            pwdEdited = false
+            onSharedTextConsumed()
+            val github = GitHubLinkParser.parse(text)
+            if (github != null) viewModel.startGitHubResolve(github)
+            else viewModel.startResolve(text, pwd)
+        }
+    }
 
     // 剪贴板分享链接提示状态：待提示的剪贴板文本 + 已忽略的文本
     // 用 rememberSaveable：切换 Tab 后返回仍保留（避免「忽略后切页回来又弹」）
@@ -445,28 +462,29 @@ private fun ResolveInputContent(
     onRemoveShortcut: (BookmarkEntity) -> Unit
 ) {
     val isLoading = state is ResolveUiState.Loading
+    var showPassword by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .nestedScroll(scrollBehavior.nestedScrollConnection)
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        Text(
-            text = "粘贴分享链接，一键解析分享内容",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        OutlinedTextField(
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("打开分享内容", style = MaterialTheme.typography.headlineMedium)
+            Text("粘贴链接或口令，查看分享文件。", style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerLowest) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        TextField(
             value = link,
             onValueChange = onLinkChange,
             modifier = Modifier.fillMaxWidth(),
             label = { Text("分享链接或口令") },
             placeholder = { Text("https://pan.quark.cn/s/xxxx") },
-            leadingIcon = { Icon(Icons.Outlined.Link, contentDescription = null) },
             trailingIcon = {
                 if (link.isNotEmpty()) {
                     IconButton(onClick = onClearLink) {
@@ -474,11 +492,21 @@ private fun ResolveInputContent(
                     }
                 }
             },
-            minLines = 3,
-            maxLines = 6,
-            shape = MaterialTheme.shapes.large
+            minLines = 2,
+            maxLines = 5,
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+            shape = RoundedCornerShape(8.dp)
         )
-
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            TextButton(onClick = {
+                val text = readClipboardSafely()
+                if (!text.isNullOrBlank()) onLinkChange(text) else SnackbarController.show("剪贴板没有可用内容")
+            }) { Text("粘贴链接") }
+            TextButton(onClick = { showPassword = !showPassword }) { Text(if (showPassword) "收起提取码" else "添加提取码") }
+        }
+        if (showPassword || pwd.isNotBlank()) {
         OutlinedTextField(
             value = pwd,
             onValueChange = onPwdChange,
@@ -493,9 +521,9 @@ private fun ResolveInputContent(
                 }
             },
             singleLine = true,
-            shape = MaterialTheme.shapes.large
+            shape = RoundedCornerShape(10.dp)
         )
-
+        }
         Button(
             onClick = {
                 // 优先识别 GitHub 链接（仓库 / 账号 / 文件直链），走 ViewModel 的 GitHub 解析入口
@@ -509,7 +537,8 @@ private fun ResolveInputContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 48.dp),
-            enabled = link.isNotBlank() && !isLoading
+            enabled = link.isNotBlank() && !isLoading,
+            shape = RoundedCornerShape(12.dp)
         ) {
             if (isLoading) {
                 CircularProgressIndicator(
@@ -521,6 +550,8 @@ private fun ResolveInputContent(
             } else {
                 Text("开始解析")
             }
+        }
+        }
         }
 
         if (state is ResolveUiState.Error) {
@@ -597,38 +628,8 @@ private fun HomeShortcutsSection(
         }
 
         if (bookmarks.isEmpty()) {
-            // 空态：引导到收藏页添加，避免这里只剩一片空白
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                )
-            ) {
-                Row(
-                    modifier = Modifier.padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.AddToHomeScreen,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = "还没有主页快捷方式",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "在「收藏网盘链接」页长按一条收藏 → 添加到主页",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
+            Text("常用分享可从收藏添加到这里。", style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp))
         } else {
             androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
                 val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale.coerceAtLeast(1f)

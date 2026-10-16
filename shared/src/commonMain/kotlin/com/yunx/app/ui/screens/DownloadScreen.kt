@@ -58,7 +58,9 @@ import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.SystemUpdate
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -623,6 +625,7 @@ private fun DownloadSubTaskRow(
     downloadDebug: Boolean = false,
     onOpenDebug: (Long) -> Unit = {}
 ) {
+    val openSavedFile = rememberFileOpener()
     val isDownloading = task.status == DownloadTaskEntity.STATUS_DOWNLOADING ||
         task.status == DownloadTaskEntity.STATUS_PENDING
     // 合并阶段进度（-1 = 不在合并）：合并时下载早就 100% 了，进度条改用合并百分比，
@@ -714,10 +717,10 @@ private fun DownloadSubTaskRow(
                     }
                     DownloadTaskEntity.STATUS_COMPLETED -> IconButton(
                         onClick = { openSavedFile(task.savePath) },
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(44.dp)
                     ) {
                         Icon(
-                            Icons.Outlined.OpenInNew, contentDescription = "打开",
+                            Icons.Outlined.OpenInNew, contentDescription = "打开方式",
                             tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp)
                         )
                     }
@@ -825,6 +828,7 @@ private fun DownloadTaskCard(
     downloadDebug: Boolean = false,
     onOpenDebug: (Long) -> Unit = {}
 ) {
+    val openSavedFile = rememberFileOpener()
     val isDownloading = task.status == DownloadTaskEntity.STATUS_DOWNLOADING ||
         task.status == DownloadTaskEntity.STATUS_PENDING
     // 合并阶段进度（-1 = 不在合并）：合并时下载早就 100% 了，界面改显示合并百分比
@@ -893,21 +897,11 @@ private fun DownloadTaskCard(
                     DownloadTaskEntity.STATUS_FAILED -> IconButton(onClick = onResume) {
                         Icon(Icons.Outlined.Refresh, contentDescription = "重试", tint = MaterialTheme.colorScheme.error)
                     }
-                                        DownloadTaskEntity.STATUS_COMPLETED -> Row {
-                        // APK 文件：额外显示「安装」按钮
-                        if (task.fileName.endsWith(".apk", true)) {
-                            IconButton(onClick = { installApk(task.savePath, task.fileName) }) {
-                                Icon(
-                                    imageVector = Icons.Outlined.SystemUpdate,
-                                    contentDescription = "安装",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
+                    DownloadTaskEntity.STATUS_COMPLETED -> Row {
                         IconButton(onClick = {
                             openSavedFile(task.savePath)
                         }) {
-                            Icon(Icons.Outlined.OpenInNew, contentDescription = "打开", tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.Outlined.OpenInNew, contentDescription = "打开方式", tint = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
@@ -1136,15 +1130,29 @@ internal fun formatRemain(millis: Long): String {
     }
 }
 
-private fun openSavedFile(savePath: String) {
-    com.yunx.app.platform.openUrl("file://$savePath")
+@Composable
+private fun rememberFileOpener(): (String) -> Unit {
+    val scope = rememberCoroutineScope()
+    var presenting by remember { mutableStateOf(false) }
+    return { path ->
+        if (!presenting) {
+            presenting = true
+            scope.launch {
+                try {
+                    if (!com.yunx.app.platform.chooseFileApp(path)) {
+                        SnackbarController.show("无法打开文件，请检查文件是否仍然存在后重试")
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    SnackbarController.show("暂时无法显示打开方式，请重试")
+                } finally {
+                    presenting = false
+                }
+            }
+        }
+    }
 }
-
-/** 安装 APK：检查「安装未知来源应用」权限（Android 8+），ACTION_VIEW 调起系统安装器 */
-private fun installApk(savePath: String, fileName: String) {
-    com.yunx.app.platform.showToast("iOS 不支持安装 APK；请前往项目发布页查看更新")
-}
-
 @Composable
 private fun AddDownloadDialog(
     onDismiss: () -> Unit,

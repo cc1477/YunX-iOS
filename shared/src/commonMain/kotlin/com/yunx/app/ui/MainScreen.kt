@@ -23,6 +23,7 @@ package com.yunx.app.ui
 import com.yunx.app.ui.components.AppScaffold
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.*
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -36,6 +37,8 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import com.yunx.app.ui.screens.SettingsSection
 import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material.icons.outlined.Visibility
@@ -214,6 +217,7 @@ fun MainScreen(
     onOpenTabConsumed: () -> Unit = {}
 ) {
     var currentTab by rememberSaveable { mutableStateOf(openTab ?: MainTab.Resolve) }
+    var settingsSection by rememberSaveable { mutableStateOf<SettingsSection?>(null) }
 
     // 实况通知等外部来源请求切 Tab：读一次即消费（清空由调用方做）
     LaunchedEffect(openTab) {
@@ -245,6 +249,18 @@ fun MainScreen(
     /** 启动公告弹窗点「查看详情」时带进去的公告 id（null = 从图标进来先看列表） */
     var announcementDetailId by rememberSaveable { mutableStateOf<String?>(null) }
     val saveableStateHolder = rememberSaveableStateHolder()
+    val sharedText by com.yunx.app.platform.SharedLinkInbox.text.collectAsState()
+    LaunchedEffect(sharedText) {
+        if (sharedText != null) {
+            currentTab = MainTab.Resolve
+            showQuarkLogin = false; showUCLogin = false; showXunleiLogin = false
+            showXunleiWebLogin = false; showXunleiVerify = false; showBaiduLogin = false
+            showC139Login = false; showPan123Login = false; showPan115Login = false
+            showGuangYaLogin = false; showILanzouLogin = false; showLanzouLogin = false
+            showAbout = false; showSupport = false; showTheme = false; showBookmarks = false
+            showGopeed = false; showAnnouncements = false
+        }
+    }
 
     val scope = rememberCoroutineScope()
     val density = androidx.compose.ui.platform.LocalDensity.current
@@ -875,7 +891,7 @@ fun MainScreen(
                     //   水滴形（见用户截图）。外层 Box 与 IconButton 同为 48dp 且不裁剪；
                     //   Box 仍是同一个 48dp 点击区，而角标自身没有 pointerInput，
                     //   点在角标上的事件照旧落到 IconButton，不影响点击。
-                    Box(
+                    if (currentTab != MainTab.Settings) Box(
                         modifier = Modifier.size(48.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -929,20 +945,20 @@ fun MainScreen(
                         containerColor = MaterialTheme.colorScheme.surface,
                         scrolledContainerColor = MaterialTheme.colorScheme.surface
                     )
-                    if (compactHeight || keyboardVisible) {
-                        androidx.compose.material3.TopAppBar(
-                            title = { Text(currentTab.title) },
-                            actions = topBarActions,
-                            colors = colors
-                        )
-                    } else {
-                        MediumTopAppBar(
-                            title = { Text(currentTab.title) },
-                            actions = topBarActions,
-                            scrollBehavior = scrollBehavior,
-                            colors = colors
-                        )
-                    }
+                    androidx.compose.material3.TopAppBar(
+                        title = { Text(if (currentTab == MainTab.Settings) settingsSection?.title ?: currentTab.title else currentTab.title,
+                            style = MaterialTheme.typography.titleMedium) },
+                        navigationIcon = {
+                            if (currentTab == MainTab.Settings && settingsSection != null) {
+                                IconButton(onClick = { settingsSection = null }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回设置") }
+                            }
+                        },
+                        expandedHeight = maxOf(64.dp, with(androidx.compose.ui.platform.LocalDensity.current) {
+                            MaterialTheme.typography.titleMedium.lineHeight.toDp()
+                        } + 24.dp),
+                        actions = topBarActions,
+                        colors = colors
+                    )
                 }
                 // ★ Material 3 Expressive 动效规格：com.yunx.app.ui.theme.AppMotionScheme 是 @Composable 属性，只能在 composable 作用域读取；
                 //   而 AnimatedContent 的 transitionSpec 是普通 lambda（非 @Composable），所以必须在这里先取好、再捕获进 lambda。
@@ -982,7 +998,9 @@ fun MainScreen(
                                     pan115CloudViewModel,
                                     guangyaCloudViewModel,
                                     bookmarkViewModel = bookmarkViewModel,
-                                    onOpenBookmarks = { showBookmarks = true }
+                                    onOpenBookmarks = { showBookmarks = true },
+                                    sharedText = sharedText,
+                                    onSharedTextConsumed = { sharedText?.let(com.yunx.app.platform.SharedLinkInbox::consume) }
                                 )
                                 MainTab.Drive -> DriveScreen(
                                     scrollBehavior = scrollBehavior,
@@ -1062,7 +1080,9 @@ fun MainScreen(
                                     onAboutClick = { showAbout = true },
                                     onSupportClick = { showSupport = true },
                                     onGopeedClick = { showGopeed = true },
-                                    backupManager = backupManager
+                                    backupManager = backupManager,
+                                    section = settingsSection,
+                                    onSectionSelected = { settingsSection = it }
                                 )
                             }
                         }
@@ -1321,20 +1341,25 @@ private fun MainBottomBar(
     currentTab: MainTab,
     onTabSelected: (MainTab) -> Unit
 ) {
-    NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
+    Column {
+    androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+    Row(Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars).heightIn(min = 56.dp)) {
         MainTab.values().forEach { tab ->
-            NavigationBarItem(
-                selected = currentTab == tab,
-                onClick = { onTabSelected(tab) },
-                icon = {
+            val selected = currentTab == tab
+            val tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            Column(Modifier.weight(1f).selectable(selected, role = androidx.compose.ui.semantics.Role.Tab,
+                onClick = { onTabSelected(tab) }).padding(horizontal = 4.dp, vertical = 6.dp).heightIn(min = 44.dp),
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                     Icon(
-                        imageVector = if (currentTab == tab) tab.selectedIcon else tab.unselectedIcon,
-                        contentDescription = null
-                    )
-                },
-                label = { Text(tab.title, maxLines = 1) }
-            )
+                        imageVector = if (selected) tab.selectedIcon else tab.unselectedIcon,
+                        contentDescription = null, tint = tint, modifier = Modifier.size(23.dp))
+                    Spacer(Modifier.height(3.dp))
+                    Text(tab.title, color = tint, style = MaterialTheme.typography.labelSmall, maxLines = 2)
+            }
         }
+    }
+    }
     }
 }
 

@@ -30,9 +30,29 @@ struct ComposeView: UIViewControllerRepresentable {
 }
 
 struct ContentView: View {
+    @Environment(\.scenePhase) private var scenePhase
+
+    private func importSharedLink() {
+        let board = UIPasteboard.general
+        guard board.contains(pasteboardTypes: [SharePayload.pasteboardType]),
+              let data = board.data(forPasteboardType: SharePayload.pasteboardType),
+              data.count <= 400_000,
+              let payload = try? JSONDecoder().decode(SharePayload.self, from: data),
+              payload.isValid else { return }
+        let key = "lastImportedShareID"
+        guard UserDefaults.standard.string(forKey: key) != payload.id.uuidString else { return }
+        if SharedLinkInbox.shared.submit(text: payload.text) {
+            UserDefaults.standard.set(payload.id.uuidString, forKey: key)
+        }
+    }
+
     var body: some View {
         ComposeView()
             // Compose owns safe-area and keyboard insets for the whole window.
             .ignoresSafeArea(.all)
+            .onAppear(perform: importSharedLink)
+            .onChange(of: scenePhase) { phase in
+                if phase == .active { importSharedLink() }
+            }
     }
 }

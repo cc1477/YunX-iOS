@@ -44,7 +44,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  */
 object AppLinks {
     /** iOS 测试版本与签名导入入口。 */
-    const val IOS_DISTRIBUTION = "https://yunx-lcsign-cc1477.pages.dev/"
+    const val IOS_DISTRIBUTION = "https://cc1477.github.io/YunX-iOS/"
 
     /** QQ 交流群群号（设置页与关于页共用）。 */
     const val QQ_GROUP = "635207650"
