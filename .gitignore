@@ -27,6 +27,7 @@ DerivedData/
 
 # Local tools and read-only upstream checkouts
 .tools/
+__pycache__/
 .upstream/
 
 # Signing material

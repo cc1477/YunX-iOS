@@ -6,9 +6,12 @@ import com.yunx.app.data.db.QuarkAccountEntity
 import com.yunx.app.data.network.QuarkApi
 import com.yunx.app.data.network.QuarkConstants
 import com.yunx.app.data.network.DomainCookiesStorage
+import com.yunx.app.data.network.BrowserCookiesStorage
+import com.yunx.app.data.network.HttpClients
 import com.yunx.app.data.repository.QuarkAccountRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
+import io.ktor.client.request.get
 import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.http.URLProtocol
@@ -25,6 +28,80 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class QuarkLoginFlowTest {
+    @Test
+    fun expiredCompleteSessionRecoversWithoutResendingTheOldJarCookie() = runBlocking {
+        val original = "__pus=principal%2Bfixture%3D; __puus=expired+session=="
+        val rootCalls = AtomicInteger()
+        val refreshCalls = AtomicInteger()
+        val principalPreserved = AtomicBoolean(true)
+        val refreshWasStripped = AtomicBoolean(false)
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        server.createContext("/") { exchange ->
+            val fields = io.ktor.http.parseClientCookiesHeader(exchange.requestHeaders.getFirst("Cookie").orEmpty())
+            if (fields["__pus"] != "principal%2Bfixture%3D") principalPreserved.set(false)
+            val config = exchange.requestURI.path.endsWith("/config")
+            val accepted = if (config) {
+                refreshCalls.incrementAndGet()
+                refreshWasStripped.set("__puus" !in fields)
+                exchange.responseHeaders.add("Set-Cookie", "__puus=fresh%2B/session==; Path=/; HttpOnly")
+                "__puus" !in fields
+            } else {
+                rootCalls.incrementAndGet()
+                fields["__puus"] == "fresh%2B/session=="
+            }
+            if (!accepted) exchange.responseHeaders.add("Set-Cookie", "__puus=guest-poison; Path=/")
+            val body = (if (accepted) """{"status":200,"data":{"list":[]}}"""
+                else """{"status":401,"code":31001,"message":"require login [guest]"}""").encodeToByteArray()
+            exchange.sendResponseHeaders(if (accepted) 200 else 401, body.size.toLong())
+            exchange.responseBody.use { it.write(body) }
+            exchange.close()
+        }
+        server.start()
+        val client = HttpClient(CIO) {
+            install(createClientPlugin("RecoveryFixture") {
+                onRequest { request, _ ->
+                    request.url.protocol = URLProtocol.HTTP
+                    request.url.host = "127.0.0.1"
+                    request.url.port = server.address.port
+                }
+            })
+            install(HttpCookies) { storage = BrowserCookiesStorage(DomainCookiesStorage()) }
+        }
+        try {
+            val api = QuarkApi { client }
+            val published = AtomicInteger()
+            api.cookieSink = { _, _ -> published.incrementAndGet() }
+            assertEquals("__pus=principal%2Bfixture%3D; __puus=fresh%2B/session==", api.validateCookie(original))
+            assertEquals(2, rootCalls.get())
+            assertEquals(1, refreshCalls.get())
+            assertTrue(principalPreserved.get())
+            assertTrue(refreshWasStripped.get())
+            assertEquals(0, published.get(), "Login attempts must not update the previous account")
+        } finally { client.close(); server.stop(0) }
+    }
+
+    @Test
+    fun browserCookieBytesSurviveTheActualHttpCookiesPipeline() = runBlocking {
+        val original = "__pus=fixture%2Fprincipal%2Bvalue%3D; __puus=fixture+session/value==; marker=part%252Ftail"
+        val received = mutableListOf<String>()
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        server.createContext("/") { exchange ->
+            received.add(exchange.requestHeaders.getFirst("Cookie").orEmpty())
+            exchange.responseHeaders.add("Set-Cookie", "__puus=rotated%2B/value==; Path=/; HttpOnly")
+            exchange.sendResponseHeaders(200, -1)
+            exchange.close()
+        }
+        server.start()
+        val client = HttpClients.newSessionClient(storage = DomainCookiesStorage())
+        try {
+            val url = "http://127.0.0.1:" + server.address.port + "/"
+            client.get(url) { headers.append("Cookie", original) }
+            assertEquals(original, received.single(), "WebKit header values must not be encoded a second time")
+            client.get(url)
+            assertEquals("rotated%2B/value==", io.ktor.http.parseClientCookiesHeader(received.last())["__puus"])
+        } finally { client.close(); server.stop(0) }
+    }
+
     @Test
     fun refreshedLoginReplacesGuestCookiesAcrossQuarkSubdomains() = runBlocking {
         val storage = DomainCookiesStorage()
@@ -95,7 +172,7 @@ class QuarkLoginFlowTest {
                 }
             })
             // Route before HttpCookies captures the URL, preserving the production cookie pipeline.
-            install(HttpCookies) { storage = DomainCookiesStorage() }
+            install(HttpCookies) { storage = BrowserCookiesStorage(DomainCookiesStorage()) }
         }
         try {
             val api = QuarkApi { client }

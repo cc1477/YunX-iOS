@@ -7,6 +7,28 @@ import re
 import subprocess
 import sys
 import time
+import os
+import plistlib
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+
+class CookieWireFixture(BaseHTTPRequestHandler):
+    def do_GET(self):
+        fields = dict(item.strip().split("=", 1) for item in self.headers.get("Cookie", "").split(";") if "=" in item)
+        expected = {"__pus": "fixture%2Fprincipal%2Bvalue%3D", "marker": "part%252Ftail",
+                    "__puus": "fixture+session/value==" if self.path == "/initial" else "rotated%2B/value=="}
+        payload = json.dumps({"matches": fields == expected}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        if self.path == "/initial":
+            self.send_header("Set-Cookie", "__puus=rotated%2B/value==; Path=/; HttpOnly")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def log_message(self, *args):
+        pass
 
 
 def simctl(*args, timeout=180):
@@ -15,6 +37,11 @@ def simctl(*args, timeout=180):
 
 def main():
     app = pathlib.Path(sys.argv[1]).resolve()
+    # Allow only local networking in this disposable simulator application, never the device IPA.
+    info_path = app / "Info.plist"
+    info = plistlib.loads(info_path.read_bytes())
+    info.setdefault("NSAppTransportSecurity", {})["NSAllowsLocalNetworking"] = True
+    info_path.write_bytes(plistlib.dumps(info, fmt=plistlib.FMT_BINARY))
     screenshot = pathlib.Path(sys.argv[2]).resolve()
     if not app.is_dir():
         raise RuntimeError(f"Built app is missing: {app}")
@@ -73,6 +100,9 @@ def main():
         simctl("terminate", udid, "com.yunx.app.ios")
         simctl("ui", udid, "appearance", "light")
         simctl("ui", udid, "content_size", "large")
+        fixture = ThreadingHTTPServer(("127.0.0.1", 0), CookieWireFixture)
+        threading.Thread(target=fixture.serve_forever, daemon=True).start()
+        os.environ["SIMCTL_CHILD_YUNX_COOKIE_TEST_URL"] = "http://127.0.0.1:" + str(fixture.server_port) + "/"
         simctl("launch", udid, "com.yunx.app.ios", "--diagnostic-export-test")
         container = pathlib.Path(simctl("get_app_container", udid, "com.yunx.app.ios", "data"))
         marker = container / "Library/Caches/YunX/diagnostic-export-test.json"
@@ -81,7 +111,10 @@ def main():
             time.sleep(1)
         result = json.loads(marker.read_text())
         simctl("io", udid, "screenshot", str(screenshot.with_name(screenshot.stem + "-diagnostic-share.png")))
-        assert all(result.get(key) for key in ("exported", "sharePresented")), result
+        assert all(result.get(key) for key in ("exported", "sharePresented", "cookieWirePreserved")), result
+        fixture.shutdown()
+        fixture.server_close()
+        os.environ.pop("SIMCTL_CHILD_YUNX_COOKIE_TEST_URL", None)
         import zipfile
         exported = list((container / "Documents/Downloads").glob("yunx_diagnostic_logs_*.zip"))
         assert len(exported) == 1, exported
@@ -90,9 +123,10 @@ def main():
             content = "\n".join(package.read(name).decode() for name in package.namelist())
             assert "native_export_test" in content and "schema 2" in content
             assert "nativeCode=-1009" in content and "NSURLErrorDomain" in content
+            assert "native_cookie_wire_verified" in content
             assert "native-secret" not in content and "second-secret" not in content
         shutil.copy2(exported[0], screenshot.parent / "YunX-diagnostic-sample.zip")
-        print("Native diagnostic ZIP integrity, redaction and UIKit share sheet passed.", flush=True)
+        print("Native Cookie byte preservation, rotation, ZIP integrity, redaction and UIKit share sheet passed.", flush=True)
     except Exception:
         diagnostics = screenshot.parent / "startup-diagnostics"
         diagnostics.mkdir(parents=True, exist_ok=True)

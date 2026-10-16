@@ -68,7 +68,7 @@ object HttpClients {
             exponentialDelay()
         }
         install(ContentNegotiation) { json(protocolJson) }
-        install(HttpCookies) { storage = cookies }
+        install(HttpCookies) { storage = BrowserCookiesStorage(cookies) }
         install(Logging) {
             // Diagnostic plugin controls logging, ensuring no successful body/header/token leaks.
             level = LogLevel.NONE

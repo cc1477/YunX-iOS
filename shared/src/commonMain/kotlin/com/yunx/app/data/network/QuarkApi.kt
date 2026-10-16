@@ -25,6 +25,7 @@ import com.yunx.app.data.network.*
 import kotlinx.serialization.json.*
 import kotlinx.datetime.*
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.client.call.*
@@ -87,6 +88,9 @@ class QuarkApi(
 ) {
     /** 每次请求动态获取全局客户端（忽略 SSL 开关切换即时生效） */
     private val client get() = clientProvider()
+    private fun isolatedCookieClient(): HttpClient = client.config {
+        install(HttpCookies) { storage = BrowserCookiesStorage(DomainCookiesStorage()) }
+    }
 
     /**
      * Cookie 回写接收器（推荐由 QuarkAccountRepository 注入并落库）：
@@ -114,29 +118,44 @@ class QuarkApi(
             DiagnosticLog.warn(DiagnosticLog.OPERATION, "quark_validate_missing_principal")
             return@withContext null
         }
+        val loginClient = isolatedCookieClient()
         try {
             // WebKit may observe the principal before the short-lived session is issued.
             // This refresh must never update the previously saved account during a login attempt.
-            val candidate = if (QuarkConstants.isValidCookie(cookie)) cookie
+            var candidate = if (QuarkConstants.isValidCookie(cookie)) cookie
                 else refreshSession(cookie, publishUpdates = false) ?: return@withContext null
-            val request = get("${QuarkConstants.CLOUD_FILE_SORT_URL}&pdir_fid=0&_page=1&_size=1", candidate)
-                .withHeader("Origin", "https://pan.quark.cn")
-                .withHeader("Referer", QuarkConstants.DOWNLOAD_REFERER)
-            val response = client.executeRequest(request)
-            val json = parseJsonObject(response.bodyAsText())
-            val accepted = response.status.isSuccess() && json.optInt("status") == 200 && json.optJsonObject("data") != null
-            DiagnosticLog.log(DiagnosticLog.OPERATION, "quark_validate", status = if (accepted) "accepted" else "rejected",
-                costMs = start.elapsedNow().inWholeMilliseconds, code = response.status.value,
-                summary = "businessStatus=" + json.optInt("status") + " | businessCode=" + json.optInt("code") +
-                    " | hasData=" + (json.optJsonObject("data") != null) + " | guest=" + json.optString("message").contains("guest", true))
-            if (!accepted) return@withContext null
-            // A login attempt must not publish Cookie updates into a previously saved account.
-            QuarkCookieUtil.mergeFromSetCookies(candidate, response.headers.getAll("Set-Cookie").orEmpty())
-                .takeIf(QuarkConstants::isValidCookie)
+            for (attempt in 0..1) {
+                val request = get("${QuarkConstants.CLOUD_FILE_SORT_URL}&pdir_fid=0&_page=1&_size=1", candidate)
+                    .withHeader("Origin", "https://pan.quark.cn")
+                    .withHeader("Referer", QuarkConstants.DOWNLOAD_REFERER)
+                val response = loginClient.executeRequest(request)
+                val json = parseJsonObject(response.bodyAsText())
+                val accepted = response.status.isSuccess() && json.optInt("status") == 200 && json.optJsonObject("data") != null
+                DiagnosticLog.log(DiagnosticLog.OPERATION, "quark_validate", status = if (accepted) "accepted" else "rejected",
+                    costMs = start.elapsedNow().inWholeMilliseconds, code = response.status.value,
+                    summary = "businessStatus=" + json.optInt("status") + " | businessCode=" + json.optInt("code") +
+                        " | hasData=" + (json.optJsonObject("data") != null) + " | guest=" + json.optString("message").contains("guest", true) +
+                        " | attempt=$attempt | cookieWireMode=raw")
+                if (!accepted) {
+                    val expiredSession = response.status.value == 401 || json.optInt("code") == 31001 || json.optInt("status") == 401
+                    if (attempt == 0 && expiredSession) {
+                        DiagnosticLog.event(DiagnosticLog.OPERATION, "quark_validate_session_recovery")
+                        candidate = refreshSession(candidate, publishUpdates = false) ?: return@withContext null
+                        continue
+                    }
+                    return@withContext null
+                }
+                // A login attempt must not publish Cookie updates into a previously saved account.
+                return@withContext QuarkCookieUtil.mergeFromSetCookies(candidate, response.headers.getAll("Set-Cookie").orEmpty())
+                    .takeIf(QuarkConstants::isValidCookie)
+            }
+            null
         } catch (e: kotlinx.coroutines.CancellationException) { throw e }
         catch (e: Exception) {
             DiagnosticLog.exception(DiagnosticLog.OPERATION, "quark_validate_exception", e)
             null
+        } finally {
+            loginClient.close()
         }
     }
 
@@ -453,8 +472,10 @@ class QuarkApi(
             .withHeader("Referer", QuarkConstants.DOWNLOAD_REFERER)
             .withGet()
 
+        // An existing jar must not silently add the deliberately removed __puus back.
+        val refreshClient = isolatedCookieClient()
         try {
-            client.executeRequest(request).let { resp ->
+            refreshClient.executeRequest(request).let { resp ->
                 val json = parseJsonObject(resp.bodyAsText())
                 val merged = QuarkCookieUtil.mergeFromSetCookies(cookie, (resp.headers.getAll("Set-Cookie") ?: emptyList()))
                 val accepted = resp.status.isSuccess() && json.optInt("status") == 200 && QuarkConstants.isValidCookie(merged)
@@ -469,6 +490,8 @@ class QuarkApi(
         catch (e: Exception) {
             DiagnosticLog.exception(DiagnosticLog.OPERATION, "quark_session_exception", e)
             null
+        } finally {
+            refreshClient.close()
         }
     }
 
