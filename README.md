@@ -6,11 +6,11 @@ Kotlin Multiplatform（KMP）共享业务代码与 Compose Multiplatform（CMP�
 
 ## 未签名真机 IPA
 
-当前请从 [GitHub Pages 备用分发页](https://cc1477.github.io/YunX-iOS/)获取构建 10，可直接导入 LCSign 或手动下载未签名 IPA，无需登录 GitHub。[Cloudflare 加速分发页](https://yunx-lcsign-cc1477.pages.dev/)因发布任务受 GitHub 账单限制，暂仍为构建 8。页面显示包内版本、构建号、构建提交及 SHA256，导入后选择自己的证书签名安装。
+当前请从 [GitHub Pages 备用分发页](https://cc1477.github.io/YunX-iOS/)获取构建 11，可直接导入 LCSign 或手动下载未签名 IPA，无需登录 GitHub。[Cloudflare 加速分发页](https://yunx-lcsign-cc1477.pages.dev/)因发布任务受 GitHub 账单限制，暂仍为构建 8（2026-10-16 重试仍被拦截）。页面显示包内版本、构建号、构建提交及 SHA256，导入后选择自己的证书签名安装。
 
-当前测试包为 **0.1.1（10）**。本轮修复夸克网页登录 Cookie 选择与定时采集、缺少短期会话时的补齐、登录后网盘刷新和旧请求回写保护，并加入详细诊断 ZIP 导出。使用方法见 [日志导出说明](docs/diagnostics.md)。此前 123 与蓝奏修复记录见 [LOGIN-DOWNLOAD-FIX.md](LOGIN-DOWNLOAD-FIX.md)。
+当前测试包为 **0.1.1（11）**。根据构建 10 返回的诊断记录，修复浏览器 Cookie 经网络插件二次编码、会话刷新时旧 Cookie 被缓存重新带回的问题；被拒绝的完整凭证会尝试一次独立会话恢复，仍须通过网盘认证验证才能保存。夸克 Cookie 输入框改为遮罩显示，校验日志新增尝试次数与传输模式。详见 [修复说明](docs/quark-cookie-fix.md)和[日志导出说明](docs/diagnostics.md)。此前 123 与蓝奏修复记录见 [LOGIN-DOWNLOAD-FIX.md](LOGIN-DOWNLOAD-FIX.md)。
 
-[设备包编译与分发部署](https://github.com/cc1477/YunX-iOS/actions/runs/38125037077)和[共享测试、模拟器构建、启动及日志导出检查](https://github.com/cc1477/YunX-iOS/actions/runs/38125037193)均已通过，共享检查共 16 项。模拟器实际验证了 ZIP 完整性、凭证脱敏、iOS 网络错误码和 UIKit 分享显示；[分享菜单截图](docs/diagnostic-share-ios.png)及[日志样本](docs/diagnostic-sample-ios.zip)仅使用测试数据。线上 IPA 已重新下载核对版本、构建号、包名及 SHA256。账号实登仍需复测。
+[设备包编译与分发部署](https://github.com/cc1477/YunX-iOS/actions/runs/38851001036)和[共享测试、模拟器构建、启动及日志导出检查](https://github.com/cc1477/YunX-iOS/actions/runs/38850701776)均已通过，共享检查共 18 项。使用含百分号、加号、斜杠及等号的虚构凭证，核对 JVM 和原生 Darwin 客户端实际 HTTP Cookie 及服务端轮换后的后续请求；另验证 401 后刷新不会带回旧会话。模拟器也实际验证了 ZIP 完整性、凭证脱敏、iOS 网络错误码和 UIKit 分享显示；[分享菜单截图](docs/diagnostic-share-ios.png)及[日志样本](docs/diagnostic-sample-ios.zip)仅使用测试数据。线上 IPA 已重新下载核对版本、构建号、包名及 SHA256。真实账号仍需安装新包复测。
 
 这是 Debug 配置的 iPhone arm64 IPA，最低 iOS 15.0，bundle ID 为 `com.yunx.app.ios`。已核验 `Payload/YunX.app`、主程序与动态库的真机平台标记；不含代码签名或描述文件，需要自行签名后安装。真机运行、登录与下载尚未验证。首次 Release 构建因 Kotlin/Native 优化阶段的 Java heap space 失败，改用 Debug 后[构建和打包通过](https://github.com/cc1477/YunX-iOS/actions/runs/37919720624)。
 
