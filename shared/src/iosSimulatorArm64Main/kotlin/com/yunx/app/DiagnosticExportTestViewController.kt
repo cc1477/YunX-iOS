@@ -36,7 +36,8 @@ fun DiagnosticExportTestViewController() = ComposeUIViewController {
                 val initial = client.get(fixtureUrl + "initial") { headers.append("Cookie", original) }
                 check(initial.status.value == 200)
                 check(Json.parseToJsonElement(initial.bodyAsText()).jsonObject["matches"]?.jsonPrimitive?.boolean == true) { "Initial Cookie bytes changed" }
-                val rotated = client.get(fixtureUrl + "rotated")
+                // Header-captured cookies are scoped to the request path; rotate on the same path.
+                val rotated = client.get(fixtureUrl + "initial?rotated=1")
                 check(rotated.status.value == 200)
                 check(Json.parseToJsonElement(rotated.bodyAsText()).jsonObject["matches"]?.jsonPrimitive?.boolean == true) { "Rotated Cookie bytes changed" }
                 true
