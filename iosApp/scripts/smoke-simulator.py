@@ -19,6 +19,8 @@ class CookieWireFixture(BaseHTTPRequestHandler):
         expected = {"__pus": "fixture%2Fprincipal%2Bvalue%3D", "marker": "part%252Ftail",
                     "__puus": "fixture+session/value==" if self.path == "/initial" else "rotated%2B/value=="}
         payload = json.dumps({"matches": fields == expected}).encode()
+        if fields != expected:
+            print("Synthetic Cookie fixture mismatch:", self.path, fields, flush=True)
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         if self.path == "/initial":
@@ -103,7 +105,8 @@ def main():
         fixture = ThreadingHTTPServer(("127.0.0.1", 0), CookieWireFixture)
         threading.Thread(target=fixture.serve_forever, daemon=True).start()
         os.environ["SIMCTL_CHILD_YUNX_COOKIE_TEST_URL"] = "http://127.0.0.1:" + str(fixture.server_port) + "/"
-        simctl("launch", udid, "com.yunx.app.ios", "--diagnostic-export-test")
+        simctl("launch", "--stdout=" + str(diagnostics / "cookie-stdout.log"),
+               "--stderr=" + str(diagnostics / "cookie-stderr.log"), udid, "com.yunx.app.ios", "--diagnostic-export-test")
         container = pathlib.Path(simctl("get_app_container", udid, "com.yunx.app.ios", "data"))
         marker = container / "Library/Caches/YunX/diagnostic-export-test.json"
         deadline = time.monotonic() + 40
@@ -136,7 +139,7 @@ def main():
         )
         (diagnostics / "YunX.log").write_text(result.stdout + result.stderr)
         print(result.stdout[-16000:], flush=True)
-        for stream in ("stdout.log", "stderr.log"):
+        for stream in ("stdout.log", "stderr.log", "cookie-stdout.log", "cookie-stderr.log"):
             path = diagnostics / stream
             if path.exists():
                 print(f"{stream}:\n{path.read_text(errors='replace')[-16000:]}", flush=True)

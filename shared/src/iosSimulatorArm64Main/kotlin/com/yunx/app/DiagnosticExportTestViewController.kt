@@ -25,6 +25,7 @@ import kotlinx.serialization.json.*
 fun DiagnosticExportTestViewController() = ComposeUIViewController {
     Text("诊断日志导出测试")
     LaunchedEffect(Unit) {
+        try {
         delay(1000)
         DiagnosticLog.setEnabled(true)
         val wirePreserved = withContext(Dispatchers.Default) {
@@ -34,10 +35,10 @@ fun DiagnosticExportTestViewController() = ComposeUIViewController {
                 val original = "__pus=fixture%2Fprincipal%2Bvalue%3D; __puus=fixture+session/value==; marker=part%252Ftail"
                 val initial = client.get(fixtureUrl + "initial") { headers.append("Cookie", original) }
                 check(initial.status.value == 200)
-                check(Json.parseToJsonElement(initial.bodyAsText()).jsonObject["matches"]?.jsonPrimitive?.boolean == true)
+                check(Json.parseToJsonElement(initial.bodyAsText()).jsonObject["matches"]?.jsonPrimitive?.boolean == true) { "Initial Cookie bytes changed" }
                 val rotated = client.get(fixtureUrl + "rotated")
                 check(rotated.status.value == 200)
-                check(Json.parseToJsonElement(rotated.bodyAsText()).jsonObject["matches"]?.jsonPrimitive?.boolean == true)
+                check(Json.parseToJsonElement(rotated.bodyAsText()).jsonObject["matches"]?.jsonPrimitive?.boolean == true) { "Rotated Cookie bytes changed" }
                 true
             } finally { client.close() }
         }
@@ -57,5 +58,10 @@ fun DiagnosticExportTestViewController() = ComposeUIViewController {
             writeUtf8("""{"exported":true,"sharePresented":$presented,"cookieWirePreserved":$wirePreserved}""")
         }
         DiagnosticLog.setEnabled(false)
+        } catch (e: Exception) {
+            FileSystem.SYSTEM.write(appCacheDir().toPath() / "diagnostic-export-test.json") {
+                writeUtf8(buildJsonObject { put("error", e.toString()) }.toString())
+            }
+        }
     }
 }
