@@ -6,3 +6,5 @@ internal data class SystemTextPreferences(val scale: Float, val bold: Boolean = 
 
 @Composable
 internal expect fun rememberSystemTextPreferences(): SystemTextPreferences
+
+internal expect fun recordSystemTextMetrics(scale: Float, density: Float, lineHeight: Int)

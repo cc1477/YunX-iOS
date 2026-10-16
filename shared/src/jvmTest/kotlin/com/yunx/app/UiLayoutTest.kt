@@ -107,6 +107,19 @@ class UiLayoutTest {
     }
 
     @Test
+    fun settingsDetailsRenderAtLargestTextSize() {
+        for (section in com.yunx.app.ui.screens.SettingsSection.values()) {
+            for ((width, height, scale) in listOf(Triple(320, 568, 1f), Triple(375, 667, 3.12f), Triple(667, 375, 3.12f))) {
+                for (dark in listOf(false, true)) {
+                    render("settings-${section.name}-${width}x$height-text$scale-$dark", width, height, scale, dark) {
+                        MainScreen(openTab = MainTab.Settings, initialSettingsSection = section)
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     fun accountAndDirectorySheetsRenderWithLongContent() {
         for ((width, height, scale) in listOf(Triple(375, 667, 1f), Triple(667, 375, 2f))) {
             render("account-${width}x$height-text$scale", width, height, scale) {

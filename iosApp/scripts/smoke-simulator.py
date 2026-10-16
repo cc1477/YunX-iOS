@@ -74,7 +74,7 @@ def main():
         diagnostics = screenshot.parent / "startup-diagnostics"
         diagnostics.mkdir(parents=True, exist_ok=True)
         launch = simctl("launch", "--stdout=" + str(diagnostics / "stdout.log"),
-                        "--stderr=" + str(diagnostics / "stderr.log"), udid, "com.yunx.app.ios")
+                        "--stderr=" + str(diagnostics / "stderr.log"), udid, "com.yunx.app.ios", "--ui-test")
         print(launch, flush=True)
         match = re.search(r":\s*(\d+)\s*$", launch)
         if not match:
@@ -87,12 +87,21 @@ def main():
         if process.returncode != 0 or pathlib.Path(process.stdout.strip()).name != app.stem:
             raise RuntimeError("YunX exited during the startup smoke test.")
         print(f"YunX remained running after 15 seconds; screenshot: {screenshot}")
+        container = pathlib.Path(simctl("get_app_container", udid, "com.yunx.app.ios", "data"))
+        metrics = container / "Library/Caches/YunX/system-text-test.json"
+        normal_text = json.loads(metrics.read_text())
+        assert abs(normal_text["scale"] - normal_text["nativePoints"] / 17) < 0.01, normal_text
         # Capture system text-size changes in the active native host, then a cold launch.
         simctl("ui", udid, "content_size", "accessibility-extra-extra-extra-large")
         time.sleep(3)
         simctl("io", udid, "screenshot", str(screenshot.with_name(screenshot.stem + "-large-live.png")))
+        large_text = json.loads(metrics.read_text())
+        assert large_text["scale"] > normal_text["scale"] * 2, (normal_text, large_text)
+        assert large_text["lineHeight"] > normal_text["lineHeight"] * 2, (normal_text, large_text)
+        assert abs(large_text["scale"] - large_text["nativePoints"] / 17) < 0.01, large_text
+        (screenshot.parent / "system-text-metrics.json").write_text(json.dumps({"normal": normal_text, "largeLive": large_text}))
         simctl("terminate", udid, "com.yunx.app.ios")
-        simctl("launch", udid, "com.yunx.app.ios")
+        simctl("launch", udid, "com.yunx.app.ios", "--ui-test")
         time.sleep(5)
         simctl("io", udid, "screenshot", str(screenshot.with_name(screenshot.stem + "-large.png")))
         simctl("ui", udid, "appearance", "dark")

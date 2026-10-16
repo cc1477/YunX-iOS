@@ -5,6 +5,7 @@ import androidx.compose.runtime.*
 import platform.Foundation.NSNotificationCenter
 import platform.Foundation.NSOperationQueue
 import platform.UIKit.*
+import okio.Path.Companion.toPath
 
 private fun readSystemTextPreferences() = SystemTextPreferences(
     scale = (UIFont.preferredFontForTextStyle(UIFontTextStyleBody).pointSize / 17.0).toFloat(),
@@ -22,7 +23,16 @@ internal actual fun rememberSystemTextPreferences(): SystemTextPreferences {
                 preferences = readSystemTextPreferences()
             }
         }
-        onDispose { observers.forEach(center::removeObserver) }
+        onDispose { observers.forEach { center.removeObserver(it) } }
     }
     return preferences
+}
+
+internal actual fun recordSystemTextMetrics(scale: Float, density: Float, lineHeight: Int) {
+    if (!platform.Foundation.NSProcessInfo.processInfo.arguments.contains("--ui-test")) return
+    val points = UIFont.preferredFontForTextStyle(UIFontTextStyleBody).pointSize
+    val path = com.yunx.app.platform.appCacheDir() + "/system-text-test.json"
+    okio.FileSystem.SYSTEM.write(path.toPath()) {
+        writeUtf8("""{"scale":$scale,"density":$density,"lineHeight":$lineHeight,"nativePoints":$points}""")
+    }
 }

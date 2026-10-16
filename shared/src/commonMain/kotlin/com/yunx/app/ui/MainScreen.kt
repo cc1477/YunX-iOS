@@ -214,10 +214,11 @@ fun MainScreen(
     /** 外部来源请求直接打开的 Tab（如点击实况通知 → 下载页）；null = 用默认「解析」页 */
     openTab: MainTab? = null,
     /** [openTab] 被消费后回调：调用方负责清空它，避免旋转/重组时重复切页 */
-    onOpenTabConsumed: () -> Unit = {}
+    onOpenTabConsumed: () -> Unit = {},
+    initialSettingsSection: SettingsSection? = null
 ) {
     var currentTab by rememberSaveable { mutableStateOf(openTab ?: MainTab.Resolve) }
-    var settingsSection by rememberSaveable { mutableStateOf<SettingsSection?>(null) }
+    var settingsSection by rememberSaveable { mutableStateOf(initialSettingsSection) }
 
     // 实况通知等外部来源请求切 Tab：读一次即消费（清空由调用方做）
     LaunchedEffect(openTab) {
