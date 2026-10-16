@@ -10,7 +10,6 @@ import platform.Foundation.NSBundle
 import platform.Foundation.NSURL
 import platform.Foundation.NSFileManager
 import platform.UIKit.*
-import platform.UIKit.UISceneActivationState.UISceneActivationStateForegroundActive
 import io.ktor.client.engine.darwin.DarwinHttpRequestException
 
 actual fun diagnosticEnvironment(): String {
