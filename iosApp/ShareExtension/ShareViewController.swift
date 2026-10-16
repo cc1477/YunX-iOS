@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 
 final class ShareViewController: UIViewController {
     private let status = UILabel()
+    private let done = UIButton(type: .system)
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -11,7 +12,7 @@ final class ShareViewController: UIViewController {
         status.font = .preferredFont(forTextStyle: .body)
         status.adjustsFontForContentSizeCategory = true
         status.text = "正在接收分享内容…"
-        let done = UIButton(type: .system)
+        done.isEnabled = false
         done.setTitle("完成", for: .normal)
         done.titleLabel?.font = .preferredFont(forTextStyle: .headline)
         done.titleLabel?.adjustsFontForContentSizeCategory = true
@@ -52,6 +53,7 @@ final class ShareViewController: UIViewController {
             }
         }
         group.notify(queue: .main) { [weak self] in
+            defer { self?.done.isEnabled = true }
             do {
                 try SharePayload.stage(texts.joined(separator: "\n"))
                 self?.status.text = "链接已导入。返回 YunX 后会自动解析。\n\n分享内容通过本机剪贴板暂存一小时。"
