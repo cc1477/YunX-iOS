@@ -6,13 +6,13 @@ Kotlin Multiplatform（KMP）共享业务代码与 Compose Multiplatform（CMP�
 
 ## 未签名真机 IPA
 
-当前请从 [GitHub Pages 备用分发页](https://cc1477.github.io/YunX-iOS/)获取构建 12，可直接导入 LCSign 或手动下载未签名 IPA，无需登录 GitHub。[Cloudflare 加速分发页](https://yunx-lcsign-cc1477.pages.dev/)因发布任务受 GitHub 账单限制，暂仍为构建 8（2026-10-16 重试仍被拦截）。页面显示包内版本、构建号、构建提交及 SHA256，导入后选择自己的证书签名安装。
+当前请从 [GitHub Pages 测试分发页](https://cc1477.github.io/YunX-iOS/)获取 **0.1.1（14）**，可导入 LCSign 或下载未签名 IPA。页面显示包内版本、构建提交及 SHA256，导入后使用自己的证书签名安装。[Cloudflare 分发页](https://yunx-lcsign-cc1477.pages.dev/)仍为构建 8：同步发布任务受 GitHub 账单限制。
 
-当前测试包为 **0.1.1（12）**，新增百度移动分享地址 `/wap/link?surl=…` 的识别，保留已有标准分享地址与提取码处理；网页导航片段不会混入分享 ID。构建 11 的 Cookie 二次编码、旧会话刷新修复也保留，详见 [修复说明](docs/quark-cookie-fix.md)和[日志导出说明](docs/diagnostics.md)。此前 123 与蓝奏修复记录见 [LOGIN-DOWNLOAD-FIX.md](LOGIN-DOWNLOAD-FIX.md)。
+构建 14 统一系统文字与分组设置界面，接入 iOS 系统文字大小和粗体偏好；新增系统分享菜单导入链接、返回 YunX 后自动解析，以及下载完成后的「打开方式」。分享扩展使用本机剪贴板暂存一小时，需要在签名包中保留并签名 `PlugIns/YunXShare.appex`。详见[分享与文件打开说明](docs/ios-sharing-and-files.md)及[界面验证](UI-ADAPTATION.md)。
 
-[构建 12 的设备包编译与分发部署](https://github.com/cc1477/YunX-iOS/actions/runs/38917979871)通过，共享检查共 19 项，包含百度移动地址、提取码、分享 ID 前缀和无效参数的回归。[本轮模拟器检查](https://github.com/cc1477/YunX-iOS/actions/runs/38917980549)完成编译和启动，Cookie 原值传输、服务端轮换及日志导出通过，但原生日志分享菜单断言返回 false，因此该工作流未通过。日志仍可在「文件 → 我的 iPhone → YunX → Downloads」查找；真实账号的百度文件读取与下载仍需复测。
+百度移动分享 `/wap/link?surl=…` 和标准 `/s/…` 均去除分享类型前缀后调用文件接口，保留服务端具体错误。已用无需提取码的实际分享验证根目录与子目录，并通过本地 HTTP 回归覆盖四种地址；真实账号下的下载仍需复测。构建 11 的 Cookie 原值传输和旧会话刷新修复保留，见[修复说明](docs/quark-cookie-fix.md)和[日志导出说明](docs/diagnostics.md)。
 
-[构建 11 的原生检查](https://github.com/cc1477/YunX-iOS/actions/runs/38850701776)曾验证 ZIP 完整性、凭证脱敏、iOS 网络错误码和 UIKit 分享显示；[分享菜单截图](docs/diagnostic-share-ios.png)及[日志样本](docs/diagnostic-sample-ios.zip)来自该轮，仅使用测试数据。
+[最终设备包与分发部署](https://github.com/cc1477/YunX-iOS/actions/runs/38928328088)通过，源提交 `f613d97ffe231029716610b1318c382080c791e5`。[本轮原生模拟器检查](https://github.com/cc1477/YunX-iOS/actions/runs/38927568960)验证应用启动、运行中字号变化、Cookie 原值与轮换、日志 ZIP 完整性和凭证脱敏，以及原生文件分享菜单；共享检查 23 项通过。模拟器验证提交 `145b5a6` 与最终包的 Kotlin 代码相同；最终包另将分享扩展的「完成」按钮延迟到内容接收后启用。系统分享菜单选择扩展、外部 App 接收文件和粗体设置切换仍需真机交互复测。
 
 这是 Debug 配置的 iPhone arm64 IPA，最低 iOS 15.0，bundle ID 为 `com.yunx.app.ios`。已核验 `Payload/YunX.app`、主程序与动态库的真机平台标记；不含代码签名或描述文件，需要自行签名后安装。真机运行、登录与下载尚未验证。首次 Release 构建因 Kotlin/Native 优化阶段的 Java heap space 失败，改用 Debug 后[构建和打包通过](https://github.com/cc1477/YunX-iOS/actions/runs/37919720624)。
 
@@ -62,7 +62,7 @@ AppIcon 目前仅有元数据占位，需在 Mac 的 Xcode 中补充真实图标
 - **后台下载有限制：**仅无请求头、无 provider 标识的普通 HTTP(S) 直链（非 m3u8）自动交给系统单连接下载，并从头开始；认证/网盘/HLS 等任务暂停后回前台继续。前台分片保留，系统调度和强制退出后恢复不保证，仍需真机验证。
 - **Gopeed、磁力/BT 不支持：**使用内置 Ktor 下载引擎，Gopeed 设置回退，磁力任务记录失败。
 - **WKWebView 登录仍需账号复测：**按允许域提取 Cookie，定时读取 SPA 凭证及 localStorage Token，并经业务校验；Chrome UA 不等于 Chromium。验证码、跨域登录与平台专有验证仍可能影响登录，可导出诊断日志排查。
-- **文件与系统能力：**下载保存在沙盒 `Documents/Downloads`；诊断 ZIP 可通过原生分享菜单发送或存储到文件，其他文件预览/选择流程待补。通知没有 Android 常驻进度条；剪贴板读取可能触发 iOS 提示。
+- **文件与系统能力：**下载保存在沙盒 `Documents/Downloads`；下载文件和诊断 ZIP 均可通过原生文件菜单选择兼容 App 或存储到文件。通知没有 Android 常驻进度条；剪贴板读取可能触发 iOS 提示。
 - **资源与更新：**AppIcon、部分品牌图片和国际化资源待补；设置页可打开 iOS 分发页获取新版本。
 
 各阶段实现、历史取舍及待验证项见 [PORTING-NOTES.md](PORTING-NOTES.md)。
