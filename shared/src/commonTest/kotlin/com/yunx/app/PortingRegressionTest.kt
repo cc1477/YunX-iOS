@@ -18,15 +18,17 @@ import kotlin.test.assertNull
 class PortingRegressionTest {
     @Test
     fun baiduMobileShareUsesTheQueryIdWithoutItsNavigationFragment() {
-        val id = "5j1x51nor2-LpEJ3z5NxNTA"
-        val mobile = "https://pan.baidu.com/wap/link?surl=$id#/home/%2F/%2F"
+        val id = "sample-Share_ID12345678"
+        val mobile = "https://pan.baidu.com/wap/link?surl=5$id#/home/%2F/%2F"
         val expected = ShareLinkParser.parse("https://pan.baidu.com/s/1$id")
         assertEquals(SharePlatform.BAIDU, expected?.platform)
         assertEquals(id, expected?.shareId)
         assertEquals(expected, ShareLinkParser.parse(mobile))
+        assertEquals(expected, ShareLinkParser.parse("https://pan.baidu.com/s/5$id"))
+        assertEquals(expected, ShareLinkParser.parse("https://pan.baidu.com/wap/link?surl=1$id"))
         assertEquals("cwsm", ShareLinkParser.parse("分享：$mobile 提取码：cwsm")?.pwd)
-        assertEquals("a1b2", ShareLinkParser.parse("https://pan.baidu.com/wap/link?pwd=a1b2&surl=$id#/home/")?.pwd)
-        assertEquals("1keep-prefix", ShareLinkParser.parse("https://pan.baidu.com/wap/link?surl=1keep-prefix")?.shareId)
+        assertEquals("a1b2", ShareLinkParser.parse("https://pan.baidu.com/wap/link?pwd=a1b2&surl=5$id#/home/")?.pwd)
+        assertEquals("1keep-in-id", ShareLinkParser.parse("https://pan.baidu.com/wap/link?surl=51keep-in-id")?.shareId)
         for (invalid in listOf("https://pan.baidu.com/wap/link?surl=", "https://pan.baidu.com/wap/link#surl=$id",
             "https://pan.baidu.com.evil.example/wap/link?surl=$id", "https://pan.baidu.com/wap/link?surl=a%2Fb")) {
             assertNull(ShareLinkParser.parse(invalid))

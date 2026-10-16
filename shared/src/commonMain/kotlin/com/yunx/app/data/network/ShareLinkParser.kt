@@ -42,7 +42,7 @@ object ShareLinkParser {
     private val quarkShareIdRegex = Regex("""pan\.quark\.cn/s/([A-Za-z0-9]+)""", RegexOption.IGNORE_CASE)
     private val ucShareIdRegex = Regex("""drive\.uc\.cn/s/([A-Za-z0-9]+)""", RegexOption.IGNORE_CASE)
     private val xunleiShareIdRegex = Regex("""pan\.xunlei\.com/s/([A-Za-z0-9_-]+)""", RegexOption.IGNORE_CASE)
-    private val baiduShareIdRegex = Regex("""pan\.baidu\.com/s/(1[A-Za-z0-9_-]+)""", RegexOption.IGNORE_CASE)
+    private val baiduShareIdRegex = Regex("""pan\.baidu\.com/s/([15][A-Za-z0-9_-]+)""", RegexOption.IGNORE_CASE)
     private val c139ShareIdRegex = Regex("""yun\.139\.com/shareweb/.*?/w/i/([A-Za-z0-9_-]+)""", RegexOption.IGNORE_CASE)
     // 123 云盘分享链接（抓包 + alist 实践综合，文档 §4.1）：
     // - https://www.123pan.com/s/<ShareKey> / https://www.123865.com/s/<ShareKey>
@@ -97,11 +97,12 @@ object ShareLinkParser {
                 ?: pwdInTextRegex.find(text)?.groupValues?.getOrNull(1)
             return ParsedShare(shareId = sid, pwd = pwd, platform = SharePlatform.XUNLEI)
         }
-        // /s/1xxxxx has a route prefix "1"; /wap/link?surl=xxxxx already contains the API ID.
-        val baiduSurl = baiduShareIdRegex.find(url)?.groupValues?.getOrNull(1)?.removePrefix("1")
+        // Both /s/<prefix><id> and /wap/link?surl=<prefix><id> include the share-type prefix.
+        // Baidu's mobile client sends surl.slice(1) to the list API, including for prefix "5".
+        val baiduSurl = baiduShareIdRegex.find(url)?.groupValues?.getOrNull(1)?.drop(1)
             ?: runCatching { Url(url) }.getOrNull()?.takeIf {
                 it.host.equals("pan.baidu.com", ignoreCase = true) && it.encodedPath == "/wap/link"
-            }?.parameters?.get("surl")?.takeIf { it.matches(Regex("[A-Za-z0-9_-]+")) }
+            }?.parameters?.get("surl")?.takeIf { it.matches(Regex("[15][A-Za-z0-9_-]+")) }?.drop(1)
         baiduSurl?.let { surl ->
             val pwd = pwdInUrlRegex.find(url)?.groupValues?.getOrNull(1)
                 ?: pwdInTextRegex.find(text)?.groupValues?.getOrNull(1)

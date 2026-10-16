@@ -125,7 +125,7 @@ class BaiduApi(
                 .withUrl("https://pan.baidu.com/share/verify?surl=$surl")
                 .withHeader("Cookie", cookie)
                 .withHeader("User-Agent", BaiduConstants.UA_WEB)
-                .withHeader("Referer", "https://pan.baidu.com/s/$surl")
+                .withHeader("Referer", "https://pan.baidu.com/s/1$surl")
                 .withHeader("Content-Type", "application/x-www-form-urlencoded")
                 .withPost(body.toRequestBody(formMediaType))
 
@@ -141,7 +141,6 @@ class BaiduApi(
  *  - 顶层 root=1，子目录 root=0（root=1 下百度忽略 dir → 子文件夹进不去）；
  *  - 子目录（root=0）必须携带 BDCLND cookie（= verify 返回的 randsk），否则 errno=2；
  *  - sekey 为空（公共分享）时省略 &sekey= 参数；
- *  - 无 sekey 却 errno!=0 → 实为加密分享，抛"该分享需要提取码"。
  * @param dir 分享内目录路径，根目录传 "/"（子目录传 "/folder"）
  * @return 文件列表 + share_id/uk（转存需要）
  */
@@ -161,20 +160,15 @@ suspend fun listShare(surl: String, sekey: String, dir: String, cookie: String, 
             .withUrl(url)
             .withHeader("Cookie", authCookie)
             .withHeader("User-Agent", BaiduConstants.UA_WEB)
-            .withHeader("Referer", "https://pan.baidu.com/s/$surl")
+            .withHeader("Referer", "https://pan.baidu.com/s/1$surl")
             .withGet()
 
         val json = executeJson(request)
         val errno = json.optInt("errno")
+        com.yunx.app.util.DiagnosticLog.log(com.yunx.app.util.DiagnosticLog.OPERATION,
+            "baidu_share_list", status = if (errno == 0) "accepted" else "rejected", code = errno,
+            summary = "root=$isRoot | page=$page | hasSeKey=${sekey.isNotBlank()} | hasCookie=${cookie.isNotBlank()}")
         if (errno != 0) {
-            // 无 sekey 却失败 → 多数情况是加密分享，提示用户索取提取码。
-            // 但 errno=-6 是「未登录/身份验证失败」（游客模式下常见），此时光提示提取码会让人白找密码，单独区分。
-            if (sekey.isBlank()) {
-                throw BaiduApiException(
-                    if (errno == -6) "该分享需要提取码，或需要登录百度网盘（errno=$errno）"
-                    else "该分享需要提取码（errno=$errno）"
-                )
-            }
             checkErrno(json, "获取分享文件列表失败")
         }
         val array = json.optJsonArray("list") ?: buildJsonArray {}
@@ -601,7 +595,8 @@ suspend fun listShare(surl: String, sekey: String, dir: String, cookie: String, 
         val errno = json.optInt("errno")
         if (errno != 0) {
             // 常见：errno=-12 提取码错误 / 403 分享已失效 / 31066 文件不存在
-            val msg = json.optString("err_msg").ifBlank { json.optString("show_msg") }.ifBlank { fallback }
+            val msg = json.optString("err_msg").ifBlank { json.optString("errmsg") }
+                .ifBlank { json.optString("show_msg") }.ifBlank { fallback }
             throw BaiduApiException("$msg（errno=$errno）")
         }
     }
