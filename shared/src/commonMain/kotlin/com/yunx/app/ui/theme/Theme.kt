@@ -380,10 +380,12 @@ fun ComposeEmptyActivityTheme(
         shapes = ExpressiveShapes,
         typography = Typography.withSystemBoldText(systemText.bold),
         content = {
+            if (isSystemTextTest()) {
             val currentDensity = LocalDensity.current
             val measured = androidx.compose.ui.text.rememberTextMeasurer().measure("Ag", androidx.compose.material3.MaterialTheme.typography.bodyLarge)
             androidx.compose.runtime.SideEffect {
                 recordSystemTextMetrics(currentDensity.fontScale, currentDensity.density, measured.size.height)
+            }
             }
             content()
         }

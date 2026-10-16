@@ -29,10 +29,12 @@ internal actual fun rememberSystemTextPreferences(): SystemTextPreferences {
 }
 
 internal actual fun recordSystemTextMetrics(scale: Float, density: Float, lineHeight: Int) {
-    if (!platform.Foundation.NSProcessInfo.processInfo.arguments.contains("--ui-test")) return
+    if (!isSystemTextTest()) return
     val points = UIFont.preferredFontForTextStyle(UIFontTextStyleBody).pointSize
     val path = com.yunx.app.platform.appCacheDir() + "/system-text-test.json"
     okio.FileSystem.SYSTEM.write(path.toPath()) {
         writeUtf8("""{"scale":$scale,"density":$density,"lineHeight":$lineHeight,"nativePoints":$points}""")
     }
 }
+
+internal actual fun isSystemTextTest(): Boolean = platform.Foundation.NSProcessInfo.processInfo.arguments.contains("--ui-test")

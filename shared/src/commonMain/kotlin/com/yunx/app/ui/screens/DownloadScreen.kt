@@ -771,6 +771,16 @@ private fun DownloadSubTaskRow(
                 },
                 text = {
                     Column {
+                        if (task.status == DownloadTaskEntity.STATUS_COMPLETED) {
+                            TextButton(onClick = {
+                                showMenu = false
+                                openSavedFile(task.savePath)
+                            }) {
+                                Icon(Icons.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("打开方式")
+                            }
+                        }
                         TextButton(onClick = {
                             showMenu = false
                             copyToClipboard(task.url)
@@ -1020,6 +1030,16 @@ private fun DownloadTaskCard(
                 },
                 text = {
                     Column {
+                        if (task.status == DownloadTaskEntity.STATUS_COMPLETED) {
+                            TextButton(onClick = {
+                                showMenu = false
+                                openSavedFile(task.savePath)
+                            }) {
+                                Icon(Icons.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("打开方式")
+                            }
+                        }
                         TextButton(onClick = {
                             showMenu = false
                             copyToClipboard(task.url)

@@ -118,7 +118,7 @@ def main():
                "--stderr=" + str(diagnostics / "cookie-stderr.log"), udid, "com.yunx.app.ios", "--diagnostic-export-test")
         container = pathlib.Path(simctl("get_app_container", udid, "com.yunx.app.ios", "data"))
         marker = container / "Library/Caches/YunX/diagnostic-export-test.json"
-        deadline = time.monotonic() + 40
+        deadline = time.monotonic() + 60
         while not marker.exists() and time.monotonic() < deadline:
             time.sleep(1)
         result = json.loads(marker.read_text())

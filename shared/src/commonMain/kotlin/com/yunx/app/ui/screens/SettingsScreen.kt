@@ -136,9 +136,13 @@ fun SettingsScreen(scrollBehavior: TopAppBarScrollBehavior,
             }
             SettingsSection.SHARING -> {
                 SettingsGroup("从其他 App 导入") {
+                    Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest, modifier = Modifier.fillMaxWidth()) {
+                    Box(Modifier.padding(vertical = 16.dp)) {
                     SettingsNote("在浏览器或其他 App 中打开分享菜单，选择 YunX。返回 YunX 后，链接会自动填入并开始解析。")
+                    }
+                    }
                 }
-                SettingsNote("第一次使用可在分享菜单的「更多」中启用 YunX。分享内容通过系统剪贴板暂存；只会自动导入 YunX 分享入口标记的内容。")
+                SettingsNote("第一次使用可在分享菜单的「更多」中启用 YunX。分享内容通过本机剪贴板暂存一小时；只会自动导入 YunX 分享入口标记的内容。如系统询问粘贴权限，请选择允许。")
             }
             SettingsSection.NETWORK -> {
                 SettingsGroup("连接") {
@@ -238,6 +242,7 @@ private fun SettingsNote(text: String) {
 @Composable
 private fun SettingsRow(title: String, summary: String? = null, value: String? = null, icon: ImageVector? = null,
     modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val largeText = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.5f
     Surface(onClick = onClick, modifier = modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceContainerLowest) {
         Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp).heightIn(min = 32.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -245,8 +250,9 @@ private fun SettingsRow(title: String, summary: String? = null, value: String? =
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(title, style = MaterialTheme.typography.bodyLarge)
                 if (summary != null) Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (largeText && value != null) Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (value != null) Text(value, modifier = Modifier.widthIn(max = 130.dp), maxLines = 2,
+            if (!largeText && value != null) Text(value, modifier = Modifier.widthIn(max = 130.dp), maxLines = 2,
                 overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }

@@ -10,6 +10,7 @@ import platform.Foundation.NSBundle
 import platform.Foundation.NSURL
 import platform.Foundation.NSFileManager
 import platform.UIKit.*
+import platform.UIKit.UISceneActivationState.UISceneActivationStateForegroundActive
 import io.ktor.client.engine.darwin.DarwinHttpRequestException
 
 actual fun diagnosticEnvironment(): String {
@@ -39,7 +40,7 @@ actual suspend fun chooseFileApp(path: String): Boolean = withContext(Dispatcher
         sourceView = presenter.view
         sourceRect = presenter.view.bounds
     }
-    withTimeoutOrNull(10_000) {
+    withTimeoutOrNull(30_000) {
         suspendCancellableCoroutine<Boolean> { continuation ->
             presenter.presentViewController(sheet, animated = true) {
                 if (continuation.isActive) continuation.resume(sheet.presentingViewController != null)

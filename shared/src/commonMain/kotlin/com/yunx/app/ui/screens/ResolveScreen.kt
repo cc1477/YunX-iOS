@@ -440,7 +440,7 @@ fun ResolveScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun ResolveInputContent(
     viewModel: ResolveViewModel,
@@ -499,7 +499,7 @@ private fun ResolveInputContent(
                 unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
             shape = RoundedCornerShape(8.dp)
         )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = {
                 val text = readClipboardSafely()
                 if (!text.isNullOrBlank()) onLinkChange(text) else SnackbarController.show("剪贴板没有可用内容")

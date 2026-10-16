@@ -117,5 +117,6 @@ jobs:
             iosApp/build/YunX-simulator.zip
             iosApp/build/YunX-startup*.png
             iosApp/build/YunX-diagnostic-sample.zip
+            iosApp/build/system-text-metrics.json
           if-no-files-found: error
           retention-days: 7

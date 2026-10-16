@@ -19,6 +19,12 @@ def prepare(ipa, site, commit, download_url=None):
             raise ValueError('Expected YunX iPhone device application')
         if 'Payload/YunX.app/embedded.mobileprovision' in archive.namelist():
             raise ValueError('Expected unsigned IPA')
+        if int(info['CFBundleVersion']) >= 14:
+            extension = plistlib.loads(archive.read('Payload/YunX.app/PlugIns/YunXShare.appex/Info.plist'))
+            if (extension['CFBundleIdentifier'] != info['CFBundleIdentifier'] + '.share'
+                    or extension['CFBundleVersion'] != info['CFBundleVersion']
+                    or extension['NSExtension']['NSExtensionPointIdentifier'] != 'com.apple.share-services'):
+                raise ValueError('Share extension does not match the application')
     metadata = dict(version=info['CFBundleShortVersionString'], build=info['CFBundleVersion'],
                     bundle=info['CFBundleIdentifier'], minimumOS=info['MinimumOSVersion'],
                     size=ipa.stat().st_size, sha256=hashlib.sha256(ipa.read_bytes()).hexdigest(),

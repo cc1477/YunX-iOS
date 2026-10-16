@@ -955,7 +955,7 @@ fun MainScreen(
                             }
                         },
                         expandedHeight = maxOf(64.dp, with(androidx.compose.ui.platform.LocalDensity.current) {
-                            MaterialTheme.typography.titleMedium.lineHeight.toDp()
+                            MaterialTheme.typography.titleMedium.lineHeight.toDp() * (if (fontScale > 1.5f) 2 else 1)
                         } + 24.dp),
                         actions = topBarActions,
                         colors = colors

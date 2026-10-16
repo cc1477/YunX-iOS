@@ -8,3 +8,4 @@ internal data class SystemTextPreferences(val scale: Float, val bold: Boolean = 
 internal expect fun rememberSystemTextPreferences(): SystemTextPreferences
 
 internal expect fun recordSystemTextMetrics(scale: Float, density: Float, lineHeight: Int)
+internal expect fun isSystemTextTest(): Boolean
