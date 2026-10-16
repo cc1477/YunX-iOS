@@ -1,6 +1,8 @@
 package com.yunx.app
 
 import com.yunx.app.data.network.XunleiKouling
+import com.yunx.app.data.network.ShareLinkParser
+import com.yunx.app.data.network.SharePlatform
 import com.yunx.app.data.network.resolveUrl
 import com.yunx.app.data.network.lanzouDownloadSign
 import com.yunx.app.ui.login.isLoginHost
@@ -14,6 +16,23 @@ import kotlin.test.assertTrue
 import kotlin.test.assertNull
 
 class PortingRegressionTest {
+    @Test
+    fun baiduMobileShareUsesTheQueryIdWithoutItsNavigationFragment() {
+        val id = "5j1x51nor2-LpEJ3z5NxNTA"
+        val mobile = "https://pan.baidu.com/wap/link?surl=$id#/home/%2F/%2F"
+        val expected = ShareLinkParser.parse("https://pan.baidu.com/s/1$id")
+        assertEquals(SharePlatform.BAIDU, expected?.platform)
+        assertEquals(id, expected?.shareId)
+        assertEquals(expected, ShareLinkParser.parse(mobile))
+        assertEquals("cwsm", ShareLinkParser.parse("分享：$mobile 提取码：cwsm")?.pwd)
+        assertEquals("a1b2", ShareLinkParser.parse("https://pan.baidu.com/wap/link?pwd=a1b2&surl=$id#/home/")?.pwd)
+        assertEquals("1keep-prefix", ShareLinkParser.parse("https://pan.baidu.com/wap/link?surl=1keep-prefix")?.shareId)
+        for (invalid in listOf("https://pan.baidu.com/wap/link?surl=", "https://pan.baidu.com/wap/link#surl=$id",
+            "https://pan.baidu.com.evil.example/wap/link?surl=$id", "https://pan.baidu.com/wap/link?surl=a%2Fb")) {
+            assertNull(ShareLinkParser.parse(invalid))
+        }
+    }
+
     @Test
     fun webLoginTokenStaysScopedAndHandlesStoredJsonStrings() {
         assertTrue(isLoginHost("yun.123pan.cn", listOf("123pan.cn")))

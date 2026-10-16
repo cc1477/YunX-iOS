@@ -18,6 +18,8 @@
 
 package com.yunx.app.data.network
 
+import io.ktor.http.Url
+
 /** 网盘平台 */
 enum class SharePlatform { QUARK, UC, XUNLEI, BAIDU, C139, PAN123, PAN115, GUANGYA, ILANZOU, LANZOU, GITHUB }
 
@@ -95,10 +97,12 @@ object ShareLinkParser {
                 ?: pwdInTextRegex.find(text)?.groupValues?.getOrNull(1)
             return ParsedShare(shareId = sid, pwd = pwd, platform = SharePlatform.XUNLEI)
         }
-        // 百度链接：https://pan.baidu.com/s/1xxxxx?pwd=xxxx
-        baiduShareIdRegex.find(url)?.groupValues?.getOrNull(1)?.let { sid ->
-            // 百度 surl 不包含开头的 "1"（verify/list 接口用 1 后面的部分）
-            val surl = sid.removePrefix("1")
+        // /s/1xxxxx has a route prefix "1"; /wap/link?surl=xxxxx already contains the API ID.
+        val baiduSurl = baiduShareIdRegex.find(url)?.groupValues?.getOrNull(1)?.removePrefix("1")
+            ?: runCatching { Url(url) }.getOrNull()?.takeIf {
+                it.host.equals("pan.baidu.com", ignoreCase = true) && it.encodedPath == "/wap/link"
+            }?.parameters?.get("surl")?.takeIf { it.matches(Regex("[A-Za-z0-9_-]+")) }
+        baiduSurl?.let { surl ->
             val pwd = pwdInUrlRegex.find(url)?.groupValues?.getOrNull(1)
                 ?: pwdInTextRegex.find(text)?.groupValues?.getOrNull(1)
             return ParsedShare(shareId = surl, pwd = pwd, platform = SharePlatform.BAIDU)
