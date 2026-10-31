@@ -12,6 +12,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: 选用机器上最新的 Xcode（新版插件需要新 SDK）
+        run: |
+          ls -d /Applications/Xcode*.app
+          LATEST=$(ls -d /Applications/Xcode_*.app | grep -v -i beta | sort -V | tail -1)
+          sudo xcode-select -s "$LATEST"
+          xcodebuild -version
+
       - uses: subosito/flutter-action@v2
         with:
           channel: stable

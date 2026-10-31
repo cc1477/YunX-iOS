@@ -1,6 +1,5 @@
 // YunX Flutter —— 移植自 CYQawa/YunX（Android），GNU AGPL-3.0-or-later
 import 'dart:typed_data';
-import 'dart:ui' show FontFeature;
 
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
