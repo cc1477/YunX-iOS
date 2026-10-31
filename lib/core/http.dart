@@ -5,7 +5,7 @@ import 'dart:typed_data';
 
 /// 一次请求的原始响应（需要读 Location / Set-Cookie / Content-Range 时用）。
 class RawResponse {
-  RawResponse(this.status, this.bytes, this.headers, this.cookies, this.finalUrl);
+  RawResponse(this.status, this.bytes, this.headers, this.cookies, this.finalUrl, [this.setCookieLines = const []]);
 
   final int status;
   final Uint8List bytes;
@@ -16,6 +16,9 @@ class RawResponse {
   /// 拆分后的 Set-Cookie（name → value）
   final Map<String, String> cookies;
   final Uri finalUrl;
+
+  /// 原始 Set-Cookie 行（115 要按 path 挑 CDN Cookie）
+  final List<String> setCookieLines;
 
   String get text => utf8.decode(bytes, allowMalformed: true);
   bool get ok => status >= 200 && status < 300;
@@ -71,7 +74,8 @@ class Http {
       final lowered = <String, String>{};
       response.headers.forEach((name, values) => lowered[name.toLowerCase()] = values.join(', '));
       final cookies = <String, String>{};
-      for (final line in response.headers[HttpHeaders.setCookieHeader] ?? const <String>[]) {
+      final lines = response.headers[HttpHeaders.setCookieHeader] ?? const <String>[];
+      for (final line in lines) {
         final pair = line.split(';').first;
         final index = pair.indexOf('=');
         if (index > 0) cookies[pair.substring(0, index).trim()] = pair.substring(index + 1).trim();
@@ -80,7 +84,7 @@ class Http {
       for (final redirect in response.redirects) {
         finalUrl = finalUrl.resolveUri(redirect.location);
       }
-      return RawResponse(response.statusCode, builder.takeBytes(), lowered, cookies, finalUrl);
+      return RawResponse(response.statusCode, builder.takeBytes(), lowered, cookies, finalUrl, lines);
     } on AppError {
       rethrow;
     } catch (e) {

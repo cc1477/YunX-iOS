@@ -228,7 +228,7 @@ class _WelcomeSheet extends StatelessWidget {
           const SizedBox(height: 6),
           Text('粘贴分享链接，直接高速下载', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
           const SizedBox(height: 28),
-          feature(Icons.add_link_rounded, '网盘 & 视频解析', '夸克、UC、123、蓝奏云、抖音、B站、快手、微博、AcFun'),
+          feature(Icons.add_link_rounded, '网盘 & 视频解析', '夸克、UC、百度、115、123、光鸭、蓝奏云，抖音、B站、快手、微博、AcFun'),
           feature(Icons.bolt_rounded, '断点续传', '暂停后继续，B站高清音视频自动合轨'),
           feature(Icons.folder_rounded, '文件 App 可见', '下载内容在「文件 › 我的 iPhone › 云析」'),
           feature(Icons.favorite_rounded, '永久免费开源', '任何收费版本都是诈骗，请立即退款'),

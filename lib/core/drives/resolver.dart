@@ -1,5 +1,6 @@
 // YunX Flutter —— 移植自 CYQawa/YunX（Android），GNU AGPL-3.0-or-later
 import '../models.dart';
+import 'baidu_115_guangya.dart';
 import 'lanzou.dart';
 import 'pan123.dart';
 import 'quark_uc.dart';
@@ -16,12 +17,18 @@ class ShareResolvers {
   static final _uc = UCResolver();
   static final _pan123 = Pan123Resolver();
   static final _lanzou = LanzouResolver();
+  static final _baidu = BaiduResolver();
+  static final _pan115 = Pan115Resolver();
+  static final _guangya = GuangYaResolver();
 
   static ShareResolver of(SharePlatform platform) => switch (platform) {
         SharePlatform.quark => _quark,
         SharePlatform.uc => _uc,
         SharePlatform.pan123 => _pan123,
         SharePlatform.lanzou => _lanzou,
+        SharePlatform.baidu => _baidu,
+        SharePlatform.pan115 => _pan115,
+        SharePlatform.guangya => _guangya,
         _ => throw ResolveError('Flutter 版暂未支持${platform.displayName}，敬请期待'),
       };
 
@@ -30,6 +37,8 @@ class ShareResolvers {
         SharePlatform.quark => QuarkResolver.fetchNickname(cookie),
         SharePlatform.uc => UCResolver.fetchNickname(cookie),
         SharePlatform.pan123 => Pan123Resolver.fetchNickname(cookie),
+        SharePlatform.baidu => BaiduResolver.fetchNickname(cookie),
+        SharePlatform.pan115 => Pan115Resolver.fetchNickname(cookie),
         _ => Future.value(cookie.trim().isEmpty ? null : ''),
       };
 }

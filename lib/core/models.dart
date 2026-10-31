@@ -27,10 +27,10 @@ enum SharePlatform {
   Color get tint => Color(_tint);
 
   /// 已移植完成的平台；其余能识别，但解析时提示「即将支持」
-  bool get isAvailable => const {quark, uc, pan123, lanzou}.contains(this);
+  bool get isAvailable => const {quark, uc, pan123, baidu, pan115, guangya, lanzou}.contains(this);
 
   LoginKind get loginKind => switch (this) {
-        quark || uc => LoginKind.web,
+        quark || uc || baidu || pan115 => LoginKind.web,
         pan123 => LoginKind.password,
         _ => LoginKind.none,
       };
@@ -38,17 +38,23 @@ enum SharePlatform {
   String? get loginUrl => switch (this) {
         quark => 'https://pan.quark.cn/?fr=pc&platform=pc',
         uc => 'https://drive.uc.cn/',
+        baidu => 'https://pan.baidu.com/',
+        pan115 => 'https://115.com/',
         _ => null,
       };
 
   String get cookieDomain => switch (this) {
         quark => 'quark.cn',
         uc => 'uc.cn',
+        baidu => 'baidu.com',
+        pan115 => '115.com',
         _ => '',
       };
 
   List<String> get requiredCookies => switch (this) {
         quark || uc => const ['__pus'],
+        baidu => const ['BDUSS'],
+        pan115 => const ['UID'],
         _ => const [],
       };
 
@@ -56,6 +62,9 @@ enum SharePlatform {
         quark => '未登录可下载约 50MB 以内的文件；登录后免转存直接取链，不受大小限制',
         uc => '未登录可游客下载；登录后视频可取原画直链',
         pan123 => '浏览分享无需登录；下载需要账号密码登录',
+        baidu => '浏览公共分享无需登录；下载需登录（经临时转存取链，取完即删）',
+        pan115 => '浏览分享无需登录；下载需要登录 115 网盘',
+        guangya => '公开分享无需登录即可解析下载',
         lanzou => '蓝奏云分享无需登录即可解析下载',
         _ => 'Flutter 版正在移植中',
       };
