@@ -1,0 +1,42 @@
+# 在 GitHub 的 macOS 机器上编译，产出未签名 IPA（用 AltStore / Sideloadly / TrollStore 等自签安装）
+name: Build iOS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 生成 Xcode 工程
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: 编译（不签名）
+        run: |
+          xcodebuild \
+            -project YunX.xcodeproj \
+            -scheme YunX \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            -quiet build
+
+      - name: 打包 IPA
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/YunX.app Payload/
+          zip -qry YunX-unsigned.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: YunX-unsigned-ipa
+          path: YunX-unsigned.ipa
