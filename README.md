@@ -13,14 +13,17 @@
 | 链接识别 | 全部 10 个网盘 + 7 个视频平台的链接 / 提取码识别规则，与 Android 版逐条一致 |
 | 夸克 / UC 网盘 | 分享 token → 分页列目录 → 免转存取直链；未登录走游客态（约 50MB 上限），登录后不限大小 |
 | 123 云盘 | 分享匿名浏览；账号密码登录后签名取直链 |
+| 百度网盘 | 公共分享匿名浏览；登录后临时转存 → locatedownload 取 CDN 直链 → 立即删除转存 |
+| 115 网盘 | 分享匿名浏览；登录后用 115 客户端 UA 取直链，自动拼接 CDN Cookie |
+| 光鸭云盘 | 公开分享匿名解析下载 |
 | 蓝奏云 | 匿名解析单文件 / 文件夹分享，含 `acw_sc__v2` 人机校验与「验证并下载」 |
 | 抖音 | SSR（ttwid + `_ROUTER_DATA`，探测最高清晰度）；失败时用无界面 WKWebView 兜底 |
 | 哔哩哔哩 | 未登录单文件；登录后 DASH 高清，下载后用 AVFoundation 直通合轨成 mp4 |
 | 快手 / 微博 / AcFun | 视频与图集；AcFun 为 HLS，按分片下载为 `.ts` |
 | 下载 | 并发上限、暂停 / 断点续传（resumeData）、实时速度、完成后可预览 / 分享 / 存入相册 |
-| 账号 | WKWebView 网页登录自动识别 Cookie（夸克、B 站），或手动粘贴 Cookie；凭证存钥匙串 |
+| 账号 | WKWebView 网页登录自动识别 Cookie（夸克、UC、百度、115、B 站），或手动粘贴 Cookie；凭证存钥匙串 |
 
-**尚未移植**（链接能识别，解析时提示「即将支持」）：迅雷、百度、139、115、光鸭、蓝奏云优享、小红书、Pixiv；以及 Android 版的转存到网盘、个人云盘管理、Gopeed 引擎、应用内公告 / 更新。新增平台只需实现 `ShareResolver` 或 `VideoParser` 协议，并在 `ShareResolvers` / `VideoParseService.parsers` 注册。
+**尚未移植**（链接能识别，解析时提示「即将支持」）：迅雷、139、蓝奏云优享、小红书、Pixiv；以及 Android 版的转存到网盘、个人云盘管理、Gopeed 引擎、应用内公告 / 更新。新增平台只需实现 `ShareResolver` 或 `VideoParser` 协议，并在 `ShareResolvers` / `VideoParseService.parsers` 注册。
 
 ## 界面
 

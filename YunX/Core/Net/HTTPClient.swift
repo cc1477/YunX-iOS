@@ -10,6 +10,8 @@ struct RawResponse {
     let finalURL: URL?
     /// 拆分后的 Set-Cookie（name=value）
     let cookies: [String: String]
+    /// 原始 Cookie 对象（115 要按 path 挑 CDN Cookie）
+    var rawCookies: [HTTPCookie] = []
 
     var text: String { String(decoding: data, as: UTF8.self) }
     var isSuccess: Bool { (200..<300).contains(status) }
@@ -79,10 +81,11 @@ final class HTTPClient {
         }
         var cookies: [String: String] = [:]
         let fields = http.allHeaderFields.reduce(into: [String: String]()) { $0["\($1.key)"] = "\($1.value)" }
-        for cookie in HTTPCookie.cookies(withResponseHeaderFields: fields, for: url) {
+        let parsed = HTTPCookie.cookies(withResponseHeaderFields: fields, for: url)
+        for cookie in parsed {
             cookies[cookie.name] = cookie.value
         }
-        return RawResponse(status: http.statusCode, data: data, headers: lowered, finalURL: http.url, cookies: cookies)
+        return RawResponse(status: http.statusCode, data: data, headers: lowered, finalURL: http.url, cookies: cookies, rawCookies: parsed)
     }
 
     /// POST application/x-www-form-urlencoded

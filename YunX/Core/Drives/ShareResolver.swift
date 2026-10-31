@@ -15,6 +15,9 @@ enum ShareResolvers {
     static let quark = QuarkResolver()
     static let uc = UCResolver()
     static let pan123 = Pan123Resolver()
+    static let baidu = BaiduResolver()
+    static let pan115 = Pan115Resolver()
+    static let guangya = GuangYaResolver()
 
     static func resolver(for platform: SharePlatform) throws -> ShareResolver {
         switch platform {
@@ -22,6 +25,9 @@ enum ShareResolvers {
         case .quark: return quark
         case .uc: return uc
         case .pan123: return pan123
+        case .baidu: return baidu
+        case .pan115: return pan115
+        case .guangya: return guangya
         default: throw ResolveError("iOS 版暂未支持\(platform.displayName)，敬请期待（Android 版已支持）")
         }
     }

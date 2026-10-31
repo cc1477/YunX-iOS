@@ -55,7 +55,7 @@ enum SharePlatform: String, CaseIterable, Codable, Identifiable, Hashable {
     /// iOS 版已经移植完成的平台；其余平台链接能识别，但解析时会给出「即将支持」提示
     var isAvailable: Bool {
         switch self {
-        case .quark, .uc, .pan123, .lanzou: return true
+        case .quark, .uc, .pan123, .baidu, .pan115, .guangya, .lanzou: return true
         default: return false
         }
     }
@@ -65,6 +65,8 @@ enum SharePlatform: String, CaseIterable, Codable, Identifiable, Hashable {
         switch self {
         case .quark: return "https://pan.quark.cn/?fr=pc&platform=pc"
         case .uc: return "https://drive.uc.cn/"
+        case .baidu: return "https://pan.baidu.com/"
+        case .pan115: return "https://115.com/"
         default: return nil
         }
     }
@@ -73,6 +75,8 @@ enum SharePlatform: String, CaseIterable, Codable, Identifiable, Hashable {
         switch self {
         case .quark: return "quark.cn"
         case .uc: return "uc.cn"
+        case .baidu: return "baidu.com"
+        case .pan115: return "115.com"
         default: return ""
         }
     }
@@ -87,6 +91,8 @@ enum SharePlatform: String, CaseIterable, Codable, Identifiable, Hashable {
     var requiredCookies: [String] {
         switch self {
         case .quark, .uc: return ["__pus"]
+        case .baidu: return ["BDUSS"]
+        case .pan115: return ["UID"]
         default: return []
         }
     }
@@ -96,6 +102,9 @@ enum SharePlatform: String, CaseIterable, Codable, Identifiable, Hashable {
         case .quark: return "未登录可下载约 50MB 以内的文件；登录后免转存直接取链，不受大小限制"
         case .uc: return "未登录可游客下载；登录后视频可取原画直链"
         case .pan123: return "浏览分享无需登录；下载需要账号密码登录"
+        case .baidu: return "浏览公共分享无需登录；下载需登录（经临时转存取链，取完即删）"
+        case .pan115: return "浏览分享无需登录；下载需要登录 115 网盘"
+        case .guangya: return "公开分享无需登录即可解析下载"
         case .lanzou: return "蓝奏云分享无需登录即可解析下载"
         default: return "iOS 版正在移植中"
         }
