@@ -1,0 +1,20 @@
+/
+  Cache-Control: no-cache
+
+/index.html
+  Cache-Control: no-cache
+
+/builds.json
+  Cache-Control: no-store
+  Access-Control-Allow-Origin: *
+
+/source.json
+  Cache-Control: no-cache
+  Access-Control-Allow-Origin: *
+  Content-Type: application/json; charset=utf-8
+
+/ipa/*
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: application/octet-stream
+  Content-Disposition: attachment
+  Access-Control-Allow-Origin: *
