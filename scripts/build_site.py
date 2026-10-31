@@ -46,7 +46,7 @@ def main(template: str, out: str, base_url: str, *specs: str) -> None:
     base_url = base_url.rstrip('/') + '/'
     if out.exists():
         shutil.rmtree(out)
-    shutil.copytree(template, out)
+    shutil.copytree(template, out, ignore=shutil.ignore_patterns('wrangler.jsonc', '.assetsignore'))
     now = datetime.now(timezone.utc).isoformat(timespec='seconds')
     builds, apps = [], []
     for spec in specs:

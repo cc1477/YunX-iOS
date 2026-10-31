@@ -1,0 +1,7 @@
+{
+  // Cloudflare Workers Builds 从 main 根目录部署时使用：静态页面在 site/，数据与 IPA 由 Worker 回源 site-dist 分支
+  "name": "yunx-ios",
+  "main": "cloudflare/proxy.js",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": "./site", "binding": "ASSETS" }
+}

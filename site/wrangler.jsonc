@@ -1,0 +1,7 @@
+{
+  // Cloudflare Workers Builds 以 site/ 为根目录部署时使用（与仓库根目录的 wrangler.jsonc 等价）
+  "name": "yunx-ios",
+  "main": "../cloudflare/proxy.js",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": ".", "binding": "ASSETS" }
+}
