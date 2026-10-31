@@ -43,6 +43,8 @@ final class AccountStore {
         case .drive(.pan123): return await Pan123Resolver.fetchNickname(token: cookie)
         case .drive(.baidu): return await BaiduResolver.fetchNickname(cookie: cookie)
         case .drive(.pan115): return await Pan115Resolver.fetchNickname(cookie: cookie)
+        case .drive(.c139): return C139Resolver.isValidCookie(cookie) ? "" : nil
+        case .drive(.xunlei): return XunleiResolver.validate(cookie)
         case .video(let platform):
             if let parser = VideoParseService.parsers[platform] { return await parser.validateCookie(cookie) }
             return cookie.trimmed.isEmpty ? nil : ""

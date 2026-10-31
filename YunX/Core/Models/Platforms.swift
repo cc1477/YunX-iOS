@@ -55,8 +55,8 @@ enum SharePlatform: String, CaseIterable, Codable, Identifiable, Hashable {
     /// iOS 版已经移植完成的平台；其余平台链接能识别，但解析时会给出「即将支持」提示
     var isAvailable: Bool {
         switch self {
-        case .quark, .uc, .pan123, .baidu, .pan115, .guangya, .lanzou: return true
-        default: return false
+        case .ilanzou: return false
+        default: return true
         }
     }
 
@@ -67,6 +67,8 @@ enum SharePlatform: String, CaseIterable, Codable, Identifiable, Hashable {
         case .uc: return "https://drive.uc.cn/"
         case .baidu: return "https://pan.baidu.com/"
         case .pan115: return "https://115.com/"
+        case .c139: return "https://yun.139.com/m/#/login"
+        case .xunlei: return "https://pan.xunlei.com/"
         default: return nil
         }
     }
@@ -77,12 +79,17 @@ enum SharePlatform: String, CaseIterable, Codable, Identifiable, Hashable {
         case .uc: return "uc.cn"
         case .baidu: return "baidu.com"
         case .pan115: return "115.com"
+        case .xunlei: return "xunlei.com"
+        // 139 的登录态分散在 mail.10086.cn 与 yun.139.com 两个域，取全部 Cookie
         default: return ""
         }
     }
 
     /// 登录页 WebView 的 UA（夸克要求 PC 环境）
-    var loginUserAgent: String { UserAgent.chrome }
+    var loginUserAgent: String { self == .c139 ? UserAgent.iPhone : UserAgent.chrome }
+
+    /// 登录态不在 Cookie 里、而在页面 localStorage 里的平台：用脚本读出来（迅雷网页版）
+    var loginScript: String? { self == .xunlei ? XunleiResolver.readScript : nil }
 
     /// 账号密码登录（不走网页）：123 用账号密码换 JWT
     var usesPasswordLogin: Bool { self == .pan123 }
@@ -93,6 +100,7 @@ enum SharePlatform: String, CaseIterable, Codable, Identifiable, Hashable {
         case .quark, .uc: return ["__pus"]
         case .baidu: return ["BDUSS"]
         case .pan115: return ["UID"]
+        case .c139: return ["Os_SSo_Sid", "RMKEY"]
         default: return []
         }
     }
@@ -106,7 +114,9 @@ enum SharePlatform: String, CaseIterable, Codable, Identifiable, Hashable {
         case .pan115: return "浏览分享无需登录；下载需要登录 115 网盘"
         case .guangya: return "公开分享无需登录即可解析下载"
         case .lanzou: return "蓝奏云分享无需登录即可解析下载"
-        default: return "iOS 版正在移植中"
+        case .c139: return "浏览分享无需登录；下载需要登录 139 网盘（和彩云）"
+        case .xunlei: return "浏览分享无需登录；下载需网页登录（经临时转存取链，取完即删）"
+        default: return "蓝奏云优享暂无可用的分享解析接口"
         }
     }
 }
@@ -153,12 +163,10 @@ enum VideoPlatform: String, CaseIterable, Codable, Identifiable, Hashable {
         }
     }
 
-    var isAvailable: Bool {
-        switch self {
-        case .xhs, .pixiv: return false
-        default: return true
-        }
-    }
+    var isAvailable: Bool { true }
+
+    /// 登录页强制按桌面宽度渲染（小红书窄屏下登录表单会被裁掉确认按钮）
+    var loginViewportWidth: Int? { self == .xhs ? 1280 : nil }
 
     /// 网页登录页；nil = 无需登录（或只支持手动填写 Cookie）
     var loginURL: String? {
@@ -254,6 +262,16 @@ enum AccountKey: Hashable, Codable {
         case .drive(let p): return p.loginUserAgent
         case .video: return UserAgent.chrome
         }
+    }
+
+    var loginScript: String? {
+        if case .drive(let p) = self { return p.loginScript }
+        return nil
+    }
+
+    var loginViewportWidth: Int? {
+        if case .video(let p) = self { return p.loginViewportWidth }
+        return nil
     }
 }
 

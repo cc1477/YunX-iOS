@@ -103,6 +103,8 @@ enum VideoParseService {
         .weibo: WeiboParser(),
         .acfun: AcFunParser(),
         .bilibili: BilibiliParser(),
+        .xhs: XhsParser(),
+        .pixiv: PixivParser(),
     ]
 
     static func parse(_ link: DetectedVideoLink, cookie: String) async throws -> VideoParseResult {

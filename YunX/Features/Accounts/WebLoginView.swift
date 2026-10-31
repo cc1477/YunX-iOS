@@ -95,6 +95,17 @@ final class WebLoginController: NSObject, WKNavigationDelegate {
         guard self.key == nil, let raw = key.loginURL, let url = URL(string: raw) else { return }
         self.key = key
         webView.customUserAgent = key.loginUserAgent
+        if let width = key.loginViewportWidth {
+            // 强制桌面宽度渲染，WebView 自动缩放到整页可见，可双指放大
+            let js = """
+            (function(){var m=document.querySelector('meta[name="viewport"]');
+            if(!m){m=document.createElement('meta');m.name='viewport';(document.head||document.documentElement).appendChild(m);}
+            m.setAttribute('content','width=\(width), user-scalable=yes');})()
+            """
+            webView.configuration.userContentController.addUserScript(
+                WKUserScript(source: js, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
+            )
+        }
         webView.load(URLRequest(url: url))
         poller = Task { [weak self] in
             while !Task.isCancelled {
@@ -108,6 +119,18 @@ final class WebLoginController: NSObject, WKNavigationDelegate {
 
     func capture(force: Bool) async {
         guard let key, !done, status != .checking else { return }
+        if let script = key.loginScript {
+            // 凭证在页面 localStorage 里（迅雷网页版）：读出来的整段 JSON 就是要保存的登录态
+            let value = await withCheckedContinuation { (continuation: CheckedContinuation<String, Never>) in
+                webView.evaluateJavaScript(script) { result, _ in continuation.resume(returning: result as? String ?? "") }
+            }
+            guard !value.isEmpty else {
+                if force { statusText = "还没有拿到登录信息，请先完成登录" }
+                return
+            }
+            await finish(key, credential: value, force: force)
+            return
+        }
         let cookies = await webView.configuration.websiteDataStore.httpCookieStore.allCookies()
         let domain = key.cookieDomain
         let relevant = cookies.filter { domain.isEmpty || $0.domain.hasSuffix(domain) || $0.domain.hasSuffix(".\(domain)") }
@@ -119,13 +142,17 @@ final class WebLoginController: NSObject, WKNavigationDelegate {
             return
         }
         let header = relevant.map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
+        await finish(key, credential: header, force: force)
+    }
+
+    private func finish(_ key: AccountKey, credential: String, force: Bool) async {
         status = .checking
         statusText = "正在校验登录状态…"
-        let nickname = await AccountStore.validate(key, cookie: header)
+        let nickname = await AccountStore.validate(key, cookie: credential)
         if let nickname {
             done = true
             poller?.cancel()
-            onSuccess?(nickname, header)
+            onSuccess?(nickname, credential)
         } else {
             status = .failed
             statusText = force ? "校验未通过，请确认已完成登录" : "登录成功后会自动识别"
