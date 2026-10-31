@@ -87,7 +87,8 @@
 
     <section class="card">
       <h2>软件源</h2>
-      <p class="sub">把源地址添加到自签工具（全能签、ESign、AltStore 等支持软件源的工具），有新版本时可直接在工具里更新。</p>
+      <p class="sub">添加软件源后，有新版本时可直接在自签工具里更新。其他支持软件源的工具（ESign、AltStore 等）可复制地址手动添加。</p>
+      <a class="btn primary" id="addSource">一键添加到全能签</a>
       <div class="source">
         <code id="sourceUrl"></code>
         <button class="btn secondary" data-copy-source>复制</button>
@@ -106,7 +107,7 @@
       <ol>
         <li>安装包未签名，需要用自签工具（LCSign、全能签等）配合你的证书签名后安装。</li>
         <li><b>LCSign</b>：点「导入到 LCSign」，在 LCSign 里选择证书签名并安装。</li>
-        <li><b>全能签</b>：点「全能签安装」，按弹出的提示添加软件源，或复制 IPA 链接到全能签的下载页。</li>
+        <li><b>全能签</b>：点「全能签安装」会唤起全能签并开始下载 IPA，下载完成后签名安装；也可以「一键添加软件源」，以后在全能签里直接更新。</li>
         <li>没有自签工具时，也可以下载 IPA，在电脑上用 Sideloadly / AltStore 安装。</li>
       </ol>
     </details>
@@ -117,28 +118,6 @@
     </p>
   </main>
 
-  <div class="sheet-bg" id="sheet" hidden>
-    <div class="sheet" role="dialog" aria-label="全能签安装">
-      <div class="grab"></div>
-      <h2 style="margin:0 0 6px">用全能签安装</h2>
-      <p class="sub" style="margin-bottom:12px">全能签没有公开的一键导入协议，任选下面一种方式：</p>
-      <button class="btn primary" data-copy-source>① 复制软件源地址</button>
-      <ol>
-        <li>打开全能签，在「软件源」里添加源，粘贴刚复制的地址。</li>
-        <li>在源里找到「<span id="sheetTitle"></span>」，下载后签名安装。</li>
-      </ol>
-      <div style="height:14px"></div>
-      <button class="btn secondary" id="copyIpa">② 复制 IPA 下载链接</button>
-      <ol>
-        <li>打开全能签的下载功能，粘贴链接下载 IPA。</li>
-        <li>或者点本页的「下载 IPA」，在 Safari 下载完成后用「分享 → 全能签」打开。</li>
-        <li>导入后选择证书签名并安装。</li>
-      </ol>
-      <div style="height:6px"></div>
-      <button class="btn ghost" id="closeSheet">关闭</button>
-    </div>
-  </div>
-
   <div class="toast" id="toast" hidden></div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
@@ -146,7 +125,8 @@
     const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const sourceURL = new URL('source.json', location.href).href;
     document.getElementById('sourceUrl').textContent = sourceURL;
-    let currentIpa = '';
+    // 全能签官方协议（signall-api.nuosike.com/url/api.php）：addsource 添加软件源，web 打开网址（IPA 地址会直接下载）
+    document.getElementById('addSource').href = 'nsk-sign://addsource?url=' + sourceURL;
 
     function toast(text) {
       const el = document.getElementById('toast');
@@ -171,9 +151,6 @@
     }
 
     document.querySelectorAll('[data-copy-source]').forEach((b) => b.addEventListener('click', () => copy(sourceURL, '软件源地址')));
-    document.getElementById('copyIpa').addEventListener('click', () => copy(currentIpa, 'IPA 链接'));
-    document.getElementById('closeSheet').addEventListener('click', () => (document.getElementById('sheet').hidden = true));
-    document.getElementById('sheet').addEventListener('click', (e) => { if (e.target.id === 'sheet') e.currentTarget.hidden = true; });
 
     const fmtSize = (n) => (n / 1048576).toFixed(1) + ' MB';
     const fmtDate = (s) => new Date(s).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -183,6 +160,8 @@
       const ipa = new URL(b.path, location.href).href;
       const file = b.path.split('/').pop();
       const lcsign = 'loadcontroller://import?url=' + encodeURIComponent(ipa) + '&name=' + encodeURIComponent(file);
+      // 按官方文档原样拼接（不转义）：地址里没有 ? 和 &，不会被截断
+      const qnq = 'nsk-sign://web?url=' + ipa;
       const el = document.createElement('article');
       el.className = 'card';
       el.innerHTML = `
@@ -196,18 +175,13 @@
         <p class="sub">${esc(b.subtitle)}</p>
         <a class="btn primary" href="${lcsign}">导入到 LCSign</a>
         <div class="row">
-          <button class="btn secondary" data-qnq>全能签安装</button>
+          <a class="btn secondary" href="${qnq}">全能签安装</a>
           <a class="btn secondary" href="${ipa}" download="${esc(file)}">下载 IPA</a>
         </div>
         <details style="margin-top:12px">
           <summary>构建与校验信息</summary>
           <p class="mono">Bundle ID：${esc(b.bundle)}<br>提交：${esc(b.commit.slice(0, 7))}<br>SHA256：${esc(b.sha256)}</p>
         </details>`;
-      el.querySelector('[data-qnq]').addEventListener('click', () => {
-        currentIpa = ipa;
-        document.getElementById('sheetTitle').textContent = b.title;
-        document.getElementById('sheet').hidden = false;
-      });
       return el;
     }
 
