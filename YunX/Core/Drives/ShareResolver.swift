@@ -13,11 +13,15 @@ protocol ShareResolver {
 enum ShareResolvers {
     static let lanzou = LanzouResolver()
     static let quark = QuarkResolver()
+    static let uc = UCResolver()
+    static let pan123 = Pan123Resolver()
 
     static func resolver(for platform: SharePlatform) throws -> ShareResolver {
         switch platform {
         case .lanzou: return lanzou
         case .quark: return quark
+        case .uc: return uc
+        case .pan123: return pan123
         default: throw ResolveError("iOS 版暂未支持\(platform.displayName)，敬请期待（Android 版已支持）")
         }
     }

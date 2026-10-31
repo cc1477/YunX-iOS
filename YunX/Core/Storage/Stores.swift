@@ -39,6 +39,8 @@ final class AccountStore {
     static func validate(_ key: AccountKey, cookie: String) async -> String? {
         switch key {
         case .drive(.quark): return await QuarkResolver.fetchNickname(cookie: cookie)
+        case .drive(.uc): return await UCResolver.fetchNickname(cookie: cookie)
+        case .drive(.pan123): return await Pan123Resolver.fetchNickname(token: cookie)
         case .video(let platform):
             if let parser = VideoParseService.parsers[platform] { return await parser.validateCookie(cookie) }
             return cookie.trimmed.isEmpty ? nil : ""

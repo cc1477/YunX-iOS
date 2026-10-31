@@ -55,7 +55,7 @@ enum SharePlatform: String, CaseIterable, Codable, Identifiable, Hashable {
     /// iOS 版已经移植完成的平台；其余平台链接能识别，但解析时会给出「即将支持」提示
     var isAvailable: Bool {
         switch self {
-        case .quark, .lanzou: return true
+        case .quark, .uc, .pan123, .lanzou: return true
         default: return false
         }
     }
@@ -64,6 +64,7 @@ enum SharePlatform: String, CaseIterable, Codable, Identifiable, Hashable {
     var loginURL: String? {
         switch self {
         case .quark: return "https://pan.quark.cn/?fr=pc&platform=pc"
+        case .uc: return "https://drive.uc.cn/"
         default: return nil
         }
     }
@@ -71,6 +72,7 @@ enum SharePlatform: String, CaseIterable, Codable, Identifiable, Hashable {
     var cookieDomain: String {
         switch self {
         case .quark: return "quark.cn"
+        case .uc: return "uc.cn"
         default: return ""
         }
     }
@@ -78,10 +80,13 @@ enum SharePlatform: String, CaseIterable, Codable, Identifiable, Hashable {
     /// 登录页 WebView 的 UA（夸克要求 PC 环境）
     var loginUserAgent: String { UserAgent.chrome }
 
+    /// 账号密码登录（不走网页）：123 用账号密码换 JWT
+    var usesPasswordLogin: Bool { self == .pan123 }
+
     /// 认定「已登录」所需的 Cookie 名
     var requiredCookies: [String] {
         switch self {
-        case .quark: return ["__pus"]
+        case .quark, .uc: return ["__pus"]
         default: return []
         }
     }
@@ -89,6 +94,8 @@ enum SharePlatform: String, CaseIterable, Codable, Identifiable, Hashable {
     var loginBenefit: String {
         switch self {
         case .quark: return "未登录可下载约 50MB 以内的文件；登录后免转存直接取链，不受大小限制"
+        case .uc: return "未登录可游客下载；登录后视频可取原画直链"
+        case .pan123: return "浏览分享无需登录；下载需要账号密码登录"
         case .lanzou: return "蓝奏云分享无需登录即可解析下载"
         default: return "iOS 版正在移植中"
         }

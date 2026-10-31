@@ -7,6 +7,7 @@ struct AccountsView: View {
 
     @State private var loginTarget: LoginTarget?
     @State private var manualTarget: LoginTarget?
+    @State private var passwordTarget: LoginTarget?
     @State private var logoutTarget: AccountKey?
 
     struct LoginTarget: Identifiable {
@@ -22,13 +23,15 @@ struct AccountsView: View {
         let available: Bool
         let canLogin: Bool
         let manualOnly: Bool
+        var passwordLogin = false
         var id: String { key.storageKey }
     }
 
     private var driveEntries: [Entry] {
         SharePlatform.allCases.map {
             Entry(key: .drive($0), name: $0.displayName, logo: $0.logo, benefit: $0.loginBenefit,
-                  available: $0.isAvailable, canLogin: $0.loginURL != nil, manualOnly: false)
+                  available: $0.isAvailable, canLogin: $0.loginURL != nil || $0.usesPasswordLogin, manualOnly: false,
+                  passwordLogin: $0.usesPasswordLogin)
         }
         .sorted { $0.available && !$1.available }
     }
@@ -65,6 +68,9 @@ struct AccountsView: View {
             .sheet(item: $manualTarget) { target in
                 ManualCookieView(key: target.key)
             }
+            .sheet(item: $passwordTarget) { target in
+                PasswordLoginView(key: target.key)
+            }
             .confirmationDialog("退出登录", isPresented: Binding(get: { logoutTarget != nil }, set: { if !$0 { logoutTarget = nil } }), titleVisibility: .visible) {
                 Button("退出", role: .destructive) {
                     if let key = logoutTarget {
@@ -99,7 +105,13 @@ struct AccountsView: View {
                         .buttonStyle(ChipButtonStyle(tint: .red))
                 } else {
                     Button("登录") {
-                        if entry.manualOnly { manualTarget = LoginTarget(key: entry.key) } else { loginTarget = LoginTarget(key: entry.key) }
+                        if entry.passwordLogin {
+                            passwordTarget = LoginTarget(key: entry.key)
+                        } else if entry.manualOnly {
+                            manualTarget = LoginTarget(key: entry.key)
+                        } else {
+                            loginTarget = LoginTarget(key: entry.key)
+                        }
                     }
                     .buttonStyle(ChipButtonStyle())
                 }
@@ -162,5 +174,83 @@ struct ManualCookieView: View {
         accounts.save(key, nickname: nickname, cookie: value)
         toast.show("\(key.displayName) 登录成功", .success)
         dismiss()
+    }
+}
+
+/// 账号密码登录（123 云盘等不走网页登录的平台）
+struct PasswordLoginView: View {
+    let key: AccountKey
+    @Environment(AccountStore.self) private var accounts
+    @Environment(ToastCenter.self) private var toast
+    @Environment(\.dismiss) private var dismiss
+    @State private var account = ""
+    @State private var password = ""
+    @State private var working = false
+    @State private var errorText: String?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    HStack {
+                        Spacer()
+                        PlatformLogo(name: key.logo, size: 64)
+                        Spacer()
+                    }
+                    .listRowBackground(Color.clear)
+                }
+                Section {
+                    TextField("手机号 / 邮箱", text: $account)
+                        .textContentType(.username)
+                        .keyboardType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    SecureField("密码", text: $password)
+                        .textContentType(.password)
+                } footer: {
+                    if let errorText {
+                        Text(errorText).foregroundStyle(.red)
+                    } else {
+                        Text("账号密码只用于向 \(key.displayName) 官方服务器换取登录凭证，不会保存密码。")
+                    }
+                }
+                Section {
+                    Button {
+                        Task { await login() }
+                    } label: {
+                        HStack {
+                            Spacer()
+                            if working { ProgressView() } else { Text("登录").bold() }
+                            Spacer()
+                        }
+                    }
+                    .disabled(working || account.trimmed.isEmpty || password.isEmpty)
+                }
+            }
+            .navigationTitle("登录\(key.displayName)")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+            }
+        }
+    }
+
+    private func login() async {
+        working = true
+        errorText = nil
+        defer { working = false }
+        do {
+            let token: String
+            switch key {
+            case .drive(.pan123): token = try await Pan123Resolver.passwordLogin(account: account, password: password)
+            default: throw ResolveError("该平台不支持账号密码登录")
+            }
+            let nickname = await AccountStore.validate(key, cookie: token) ?? ""
+            accounts.save(key, nickname: nickname, cookie: token)
+            toast.show("\(key.displayName) 登录成功", .success)
+            dismiss()
+        } catch {
+            errorText = error.localizedDescription
+        }
     }
 }
