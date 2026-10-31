@@ -1,8 +1,8 @@
-# 分发站点：取两个分支最新一次成功构建的 IPA → 组装站点 → 发布到 Cloudflare Pages（全球 CDN 加速）
+# 分发站点：取两个分支最新一次成功构建的 IPA → 组装站点 → 推送到 site-dist 分支
 #
-# 需要在仓库 Settings › Secrets and variables › Actions 里添加：
-#   CF_API_TOKEN   Cloudflare API 令牌（权限：Account › Cloudflare Pages › Edit）
-#   CF_ACCOUNT_ID  Cloudflare 账户 ID
+# site-dist 分支由 Cloudflare Workers Builds 连接（Git 集成，无需在 GitHub 里存 Cloudflare 令牌），
+# 分支一更新 Cloudflare 就自动执行 `npx wrangler deploy`，经全球 CDN 分发。
+# 该分支每次都是覆盖式的单个提交，仓库体积不会随版本增长。
 name: Deploy Site
 
 on:
@@ -11,22 +11,19 @@ on:
     types: [completed]
   push:
     branches: [main]
-    paths: ["site/**", "scripts/build_site.py", ".github/workflows/deploy-site.yml"]
+    paths: ["site/**", "cloudflare/**", "scripts/build_site.py", ".github/workflows/deploy-site.yml"]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   actions: read
 
 concurrency:
   group: yunx-site
   cancel-in-progress: true
 
-env:
-  PROJECT: yunx-ios-cc1477
-
 jobs:
-  deploy:
+  publish:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -49,75 +46,30 @@ jobs:
           }
           fetch "Build iOS" main YunX-unsigned-ipa in/swiftui
           fetch "Build Flutter iOS" flutter YunX-Flutter-unsigned-ipa in/flutter
-          ls -la in/*
 
       - name: 组装站点
         run: |
-          python3 scripts/build_site.py site public "https://$PROJECT.pages.dev/" \
+          # 绝对地址用 __BASE__/ 占位，由 Worker 在访问时替换成实际域名
+          python3 scripts/build_site.py site dist/public "__BASE__/" \
             "swiftui=in/swiftui/YunX-unsigned.ipa=$(cat in/swiftui/commit)" \
             "flutter=in/flutter/YunX-Flutter-unsigned.ipa=$(cat in/flutter/commit)"
+          cp cloudflare/worker.js cloudflare/wrangler.jsonc dist/
+          cat > dist/README.md <<EOF
+          # site-dist
+          由 \`.github/workflows/deploy-site.yml\` 自动生成，请勿手动修改。来源提交：$GITHUB_SHA
+          EOF
+          find dist -type f | sort
 
-      - name: 保存站点产物（便于预览）
-        uses: actions/upload-artifact@v4
-        with:
-          name: yunx-site
-          path: public
-
-      - name: 检查 Cloudflare 凭证
+      - name: 推送到 site-dist 分支
         env:
-          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          if [ -z "$CF_API_TOKEN" ] || [ -z "$CF_ACCOUNT_ID" ]; then
-            echo "::error::请先在仓库 Secrets 中添加 CF_API_TOKEN 和 CF_ACCOUNT_ID"
-            exit 1
-          fi
-
-      - name: 确保 Pages 项目存在
-        env:
-          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          python3 - <<'PY'
-          import json, os, urllib.error, urllib.request
-          base = f"https://api.cloudflare.com/client/v4/accounts/{os.environ['CF_ACCOUNT_ID']}/pages/projects"
-          headers = {'Authorization': 'Bearer ' + os.environ['CF_API_TOKEN'], 'Content-Type': 'application/json'}
-          project = os.environ['PROJECT']
-          try:
-              urllib.request.urlopen(urllib.request.Request(f'{base}/{project}', headers=headers), timeout=30)
-              print('项目已存在：' + project)
-          except urllib.error.HTTPError as error:
-              if error.code != 404:
-                  raise
-              data = json.dumps({'name': project, 'production_branch': 'main'}).encode()
-              result = json.load(urllib.request.urlopen(urllib.request.Request(base, data=data, headers=headers), timeout=30))
-              assert result['success'], result
-              print('已创建项目：' + project)
-          PY
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: 发布到 Cloudflare Pages
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: npx --yes wrangler@4 pages deploy public --project-name="$PROJECT" --branch=main --commit-dirty=true
-
-      - name: 校验线上文件
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -e
-          site="https://$PROJECT.pages.dev"
-          curl -fsS --retry 5 --retry-all-errors --retry-delay 5 "$site/builds.json" -o live.json
-          python3 - <<'PY'
-          import hashlib, json, subprocess
-          builds = json.load(open('live.json'))['builds']
-          for b in builds:
-              subprocess.run(['curl', '-fsS', '--retry', '5', '--retry-all-errors', '--retry-delay', '5', b['url'], '-o', 'check.ipa'], check=True)
-              digest = hashlib.sha256(open('check.ipa', 'rb').read()).hexdigest()
-              assert digest == b['sha256'], f"{b['id']} 校验失败"
-              print(f"{b['id']} v{b['version']}({b['build']}) OK  {b['url']}")
-          PY
-          curl -fsS "$site/source.json" | python3 -c "import json,sys; print('软件源 apps:', len(json.load(sys.stdin)['apps']))"
-          echo "站点：$site"
+          cd dist
+          git init -q -b site-dist
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "分发站点 $(date -u +%Y-%m-%dT%H:%MZ)（来源 ${GITHUB_SHA:0:7}）"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" site-dist
+          echo "已推送 site-dist：$(git rev-parse --short HEAD)"
