@@ -1,0 +1,60 @@
+# Flutter 分支：在 GitHub 的 macOS 机器上生成 iOS 工程并编译，产出未签名 IPA
+name: Build Flutter iOS
+
+on:
+  push:
+    branches: [flutter]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: 生成 iOS 平台工程（只补缺失文件，不覆盖 lib/）
+        run: |
+          flutter --version
+          flutter create --org com.yunx --project-name yunx --platforms=ios .
+          rm -rf test
+
+      - name: 配置 Info.plist
+        run: |
+          P=ios/Runner/Info.plist
+          pb() { /usr/libexec/PlistBuddy -c "$1" "$P"; }
+          set_or_add() { pb "Set :$1 $3" 2>/dev/null || pb "Add :$1 $2 $3"; }
+          set_or_add CFBundleDisplayName string 云析
+          set_or_add UIFileSharingEnabled bool true
+          set_or_add LSSupportsOpeningDocumentsInPlace bool true
+          set_or_add NSPhotoLibraryAddUsageDescription string 将下载的图片和视频保存到相册
+          set_or_add NSPhotoLibraryUsageDescription string 将下载的图片和视频保存到相册
+          pb "Add :NSAppTransportSecurity dict" 2>/dev/null || true
+          set_or_add NSAppTransportSecurity:NSAllowsArbitraryLoads bool true
+          plutil -lint "$P"
+
+      - name: 依赖与图标
+        run: |
+          flutter pub get
+          dart run flutter_launcher_icons
+
+      - name: 静态检查（仅输出，不阻断）
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings || true
+
+      - name: 编译（不签名）
+        run: flutter build ios --release --no-codesign
+
+      - name: 打包 IPA
+        run: |
+          mkdir -p Payload
+          cp -R build/ios/iphoneos/Runner.app Payload/
+          zip -qry YunX-Flutter-unsigned.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: YunX-Flutter-unsigned-ipa
+          path: YunX-Flutter-unsigned.ipa
