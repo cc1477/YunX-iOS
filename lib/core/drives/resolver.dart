@@ -1,6 +1,7 @@
 // YunX Flutter —— 移植自 CYQawa/YunX（Android），GNU AGPL-3.0-or-later
 import '../models.dart';
 import 'baidu_115_guangya.dart';
+import 'c139_xunlei.dart';
 import 'lanzou.dart';
 import 'pan123.dart';
 import 'quark_uc.dart';
@@ -20,6 +21,8 @@ class ShareResolvers {
   static final _baidu = BaiduResolver();
   static final _pan115 = Pan115Resolver();
   static final _guangya = GuangYaResolver();
+  static final _c139 = C139Resolver();
+  static final _xunlei = XunleiResolver();
 
   static ShareResolver of(SharePlatform platform) => switch (platform) {
         SharePlatform.quark => _quark,
@@ -29,7 +32,9 @@ class ShareResolvers {
         SharePlatform.baidu => _baidu,
         SharePlatform.pan115 => _pan115,
         SharePlatform.guangya => _guangya,
-        _ => throw ResolveError('Flutter 版暂未支持${platform.displayName}，敬请期待'),
+        SharePlatform.c139 => _c139,
+        SharePlatform.xunlei => _xunlei,
+        _ => throw ResolveError('${platform.displayName}暂无可用的分享解析接口（Android 版同样不支持）'),
       };
 
   /// 登录态校验：返回昵称，无效返回 null
@@ -39,6 +44,8 @@ class ShareResolvers {
         SharePlatform.pan123 => Pan123Resolver.fetchNickname(cookie),
         SharePlatform.baidu => BaiduResolver.fetchNickname(cookie),
         SharePlatform.pan115 => Pan115Resolver.fetchNickname(cookie),
+        SharePlatform.c139 => Future.value(C139Resolver.isValidCookie(cookie) ? '' : null),
+        SharePlatform.xunlei => Future.value(XunleiResolver.validate(cookie)),
         _ => Future.value(cookie.trim().isEmpty ? null : ''),
       };
 }

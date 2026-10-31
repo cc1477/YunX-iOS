@@ -6,6 +6,7 @@ import '../models.dart';
 import '../text.dart';
 import 'parsers.dart';
 import 'douyin.dart';
+import 'xhs_pixiv.dart';
 
 /// 单个视频平台的解析器
 abstract class VideoParser {
@@ -72,6 +73,8 @@ class VideoParseService {
     VideoPlatform.weibo: WeiboParser(),
     VideoPlatform.acfun: AcFunParser(),
     VideoPlatform.bilibili: BilibiliParser(),
+    VideoPlatform.xhs: XhsParser(),
+    VideoPlatform.pixiv: PixivParser(),
   };
 
   static Future<VideoParseResult> parse(DetectedVideoLink link, String cookie) async {

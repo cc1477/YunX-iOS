@@ -1,11 +1,13 @@
 // YunX Flutter —— 移植自 CYQawa/YunX（Android），GNU AGPL-3.0-or-later
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:provider/provider.dart';
 
+import '../core/drives/c139_xunlei.dart';
 import '../core/drives/pan123.dart';
 import '../core/http.dart';
 import '../core/models.dart';
@@ -150,6 +152,7 @@ class _WebLoginPageState extends State<WebLoginPage> {
   bool _checking = false;
   bool _done = false;
   String _status = '登录成功后会自动识别';
+  InAppWebViewController? _controller;
 
   AccountKey get k => widget.accountKey;
 
@@ -167,13 +170,28 @@ class _WebLoginPageState extends State<WebLoginPage> {
 
   Future<void> _capture(bool force) async {
     if (_done || _checking || !mounted) return;
+    if (k.usesStorageLogin) {
+      // 凭证在页面 localStorage 里（迅雷网页版）：读出来的整段 JSON 就是要保存的登录态
+      final value = '${await _controller?.evaluateJavascript(source: XunleiResolver.readScript) ?? ''}';
+      if (value.isEmpty || value == 'null') {
+        if (force && mounted) setState(() => _status = '还没有拿到登录信息，请先完成登录');
+        return;
+      }
+      return _finish(value, force);
+    }
     final domain = k.cookieDomain;
-    final host = k.loginUrl == null ? domain : Uri.parse(k.loginUrl!).host;
-    final list = <Cookie>[
-      ...await _cookies.getCookies(url: WebUri('https://$host')),
-      if (host != domain) ...await _cookies.getCookies(url: WebUri('https://$domain')),
-      if (host != 'www.$domain') ...await _cookies.getCookies(url: WebUri('https://www.$domain')),
-    ];
+    final List<Cookie> list;
+    if (domain.isEmpty) {
+      // 登录态分散在多个域（139）：取全部 Cookie
+      list = await _cookies.getAllCookies();
+    } else {
+      final host = Uri.parse(k.loginUrl!).host;
+      list = [
+        ...await _cookies.getCookies(url: WebUri('https://$host')),
+        if (host != domain) ...await _cookies.getCookies(url: WebUri('https://$domain')),
+        if (host != 'www.$domain') ...await _cookies.getCookies(url: WebUri('https://www.$domain')),
+      ];
+    }
     final map = <String, String>{};
     for (final c in list) {
       map[c.name] = '${c.value}';
@@ -184,7 +202,11 @@ class _WebLoginPageState extends State<WebLoginPage> {
       setState(() => _status = '还没有拿到登录信息，请先完成登录');
       return;
     }
-    final header = map.entries.map((e) => '${e.key}=${e.value}').join('; ');
+    await _finish(map.entries.map((e) => '${e.key}=${e.value}').join('; '), force);
+  }
+
+  Future<void> _finish(String header, bool force) async {
+    if (!mounted) return;
     setState(() {
       _checking = true;
       _status = '正在校验登录状态…';
@@ -225,8 +247,22 @@ class _WebLoginPageState extends State<WebLoginPage> {
       ),
       body: InAppWebView(
         initialUrlRequest: URLRequest(url: WebUri(k.loginUrl!)),
-        initialSettings: InAppWebViewSettings(userAgent: UA.chrome, sharedCookiesEnabled: false),
-        onWebViewCreated: (_) => _cookies.deleteAllCookies(),
+        initialSettings: InAppWebViewSettings(userAgent: k.loginUserAgent, sharedCookiesEnabled: false),
+        initialUserScripts: k.loginViewportWidth == null
+            ? null
+            : UnmodifiableListView([
+                // 强制桌面宽度渲染，整页缩放可见、可双指放大
+                UserScript(
+                  source: "(function(){var m=document.querySelector('meta[name=\"viewport\"]');"
+                      "if(!m){m=document.createElement('meta');m.name='viewport';(document.head||document.documentElement).appendChild(m);}"
+                      "m.setAttribute('content','width=${k.loginViewportWidth}, user-scalable=yes');})()",
+                  injectionTime: UserScriptInjectionTime.AT_DOCUMENT_END,
+                ),
+              ]),
+        onWebViewCreated: (c) {
+          _controller = c;
+          _cookies.deleteAllCookies();
+        },
         onProgressChanged: (_, p) => setState(() => _progress = p / 100),
         onLoadStop: (_, __) => _capture(false),
       ),

@@ -27,10 +27,10 @@ enum SharePlatform {
   Color get tint => Color(_tint);
 
   /// 已移植完成的平台；其余能识别，但解析时提示「即将支持」
-  bool get isAvailable => const {quark, uc, pan123, baidu, pan115, guangya, lanzou}.contains(this);
+  bool get isAvailable => this != ilanzou;
 
   LoginKind get loginKind => switch (this) {
-        quark || uc || baidu || pan115 => LoginKind.web,
+        quark || uc || baidu || pan115 || c139 || xunlei => LoginKind.web,
         pan123 => LoginKind.password,
         _ => LoginKind.none,
       };
@@ -40,6 +40,8 @@ enum SharePlatform {
         uc => 'https://drive.uc.cn/',
         baidu => 'https://pan.baidu.com/',
         pan115 => 'https://115.com/',
+        c139 => 'https://yun.139.com/m/#/login',
+        xunlei => 'https://pan.xunlei.com/',
         _ => null,
       };
 
@@ -48,6 +50,8 @@ enum SharePlatform {
         uc => 'uc.cn',
         baidu => 'baidu.com',
         pan115 => '115.com',
+        xunlei => 'xunlei.com',
+        // 139 的登录态分散在 mail.10086.cn 与 yun.139.com 两个域，取全部 Cookie
         _ => '',
       };
 
@@ -55,6 +59,7 @@ enum SharePlatform {
         quark || uc => const ['__pus'],
         baidu => const ['BDUSS'],
         pan115 => const ['UID'],
+        c139 => const ['Os_SSo_Sid', 'RMKEY'],
         _ => const [],
       };
 
@@ -66,8 +71,15 @@ enum SharePlatform {
         pan115 => '浏览分享无需登录；下载需要登录 115 网盘',
         guangya => '公开分享无需登录即可解析下载',
         lanzou => '蓝奏云分享无需登录即可解析下载',
-        _ => 'Flutter 版正在移植中',
+        c139 => '浏览分享无需登录；下载需要登录 139 网盘（和彩云）',
+        xunlei => '浏览分享无需登录；下载需网页登录（经临时转存取链，取完即删）',
+        _ => '蓝奏云优享暂无可用的分享解析接口',
       };
+
+  /// 登录态在页面 localStorage 里、而不是 Cookie 里（迅雷网页版）
+  bool get usesStorageLogin => this == xunlei;
+
+  String get loginUserAgent => this == c139 ? UA.iPhone : UA.chrome;
 }
 
 /// 视频平台
@@ -87,7 +99,10 @@ enum VideoPlatform {
 
   String get logo => 'assets/logos/logo_$_logo.png';
   Color get tint => Color(_tint);
-  bool get isAvailable => this != xhs && this != pixiv;
+  bool get isAvailable => true;
+
+  /// 登录页强制按桌面宽度渲染（小红书窄屏下登录表单会被裁掉确认按钮）
+  int? get loginViewportWidth => this == xhs ? 1280 : null;
 
   LoginKind get loginKind => switch (this) {
         bilibili || xhs => LoginKind.web,
@@ -138,6 +153,9 @@ class AccountKey {
   String get cookieDomain => drive?.cookieDomain ?? video!.cookieDomain;
   List<String> get requiredCookies => drive?.requiredCookies ?? video!.requiredCookies;
   LoginKind get loginKind => drive?.loginKind ?? video!.loginKind;
+  bool get usesStorageLogin => drive?.usesStorageLogin ?? false;
+  String get loginUserAgent => drive?.loginUserAgent ?? UA.chrome;
+  int? get loginViewportWidth => video?.loginViewportWidth;
 
   @override
   bool operator ==(Object other) => other is AccountKey && other.storageKey == storageKey;
