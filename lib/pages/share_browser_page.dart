@@ -160,7 +160,7 @@ class _ShareBrowserPageState extends State<ShareBrowserPage> {
     final folders = _files.where((f) => f.isDir).length;
     final total = _files.fold<int>(0, (a, f) => a + (f.isDir ? 0 : f.size));
     return Scaffold(
-      extendBodyBehindAppBar: false,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(_crumbs.last.$2, maxLines: 1, overflow: TextOverflow.ellipsis),
         backgroundColor: Colors.transparent,

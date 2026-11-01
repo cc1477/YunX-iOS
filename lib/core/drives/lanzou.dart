@@ -5,9 +5,11 @@ import '../models.dart';
 import '../text.dart';
 import 'resolver.dart';
 
+/// 文件夹分页请求：接口地址 + 页面 `data : { … }` 里的全部字段（pg / pwd 每次请求时覆盖）
 class _FolderParams {
-  _FolderParams(this.lx, this.fid, this.t, this.k);
-  final String lx, fid, t, k;
+  _FolderParams(this.url, this.fields);
+  final String url;
+  final List<MapEntry<String, String>> fields;
 }
 
 class _SharePage {
@@ -86,13 +88,9 @@ class LanzouResolver implements ShareResolver {
     final fileId = RX.first(r'(?:ajaxm|ajaxfile)\.php\?file=(\d+)', html) ??
         RX.first(r'''name=["']file["']\s+value=["'](\d+)["']''', html) ??
         RX.first(r'file=(\d+)', html);
-    _FolderParams? folder;
-    if (isFolder) {
-      final lx = _jsVar(html, 'lx'), t = _jsVar(html, 't'), k = _jsVar(html, 'k');
-      if (lx != null && t != null && k != null) {
-        folder = _FolderParams(lx, _jsVar(html, 'fid') ?? uri.pathSegments.lastWhere((e) => e.isNotEmpty, orElse: () => ''), t, k);
-      }
-    }
+    final folder = isFolder
+        ? _folderParams(html, origin, uri.pathSegments.lastWhere((e) => e.isNotEmpty, orElse: () => ''))
+        : null;
     ShareFile? single;
     if (!isFolder) {
       final m = RX.groups(r'(?:文件大小|大小)\s*[:：]\s*([\d.]+)\s*([KMGT]?)(?:i?B)?', html);
@@ -126,11 +124,8 @@ class LanzouResolver implements ShareResolver {
       if (pg > 1 || retries > 0) await Future.delayed(Duration(milliseconds: retries > 0 ? 600 * (retries + 1) : 250));
       J body;
       try {
-        body = await _formPost('${page.origin}/filemoreajax.php', [
-          MapEntry('lx', params.lx),
-          MapEntry('fid', params.fid),
-          MapEntry('t', params.t),
-          MapEntry('k', params.k),
+        body = await _formPost(params.url, [
+          ...params.fields,
           MapEntry('pwd', pwd),
           MapEntry('pg', '$pg'),
         ], page.shareUrl, page.origin);
@@ -409,6 +404,44 @@ class LanzouResolver implements ShareResolver {
     final g = RX.groups('(?:(?:var|let|const)\\s+)?${RegExp.escape(name)}\\s*=\\s*[\'"]([^\'"]*)[\'"]', html,
         ignoreCase: false);
     return g?[1];
+  }
+
+  /// 新版页面把参数写在 `data : { 'lx':2, 't':变量名, 'k':变量名, … }` 里；旧版是 `var lx = '…'`
+  static _FolderParams? _folderParams(String html, String origin, String fallbackFid) {
+    final found = RX.first(r'''url\s*:\s*['"]([^'"]*filemoreajax\.php[^'"]*)['"]''', html, ignoreCase: false);
+    final url = found == null ? '$origin/filemoreajax.php' : _absolutize(origin, found);
+    for (final object in RX.all(r'\bdata\s*:\s*\{([^{}]*)\}', html, dotAll: true)) {
+      if (!object[1].contains('fid')) continue;
+      final fields = <MapEntry<String, String>>[];
+      for (final p in RX.all(
+          r'''['"]?([A-Za-z_]\w*)['"]?\s*:\s*('(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|[A-Za-z_$][\w$]*|-?\d+)''', object[1],
+          ignoreCase: false)) {
+        final key = p[1], raw = p[2];
+        if (key == 'pg' || key == 'pwd') continue;
+        String? value;
+        if (raw.startsWith("'") || raw.startsWith('"')) {
+          value = raw.substring(1, raw.length - 1);
+        } else if (RegExp(r'^-?\d+$').hasMatch(raw)) {
+          value = raw;
+        } else {
+          value = _jsVar(html, raw) ?? RX.first('\\b${RegExp.escape(raw)}\\s*=\\s*(-?\\d+)\\s*;', html, ignoreCase: false);
+        }
+        if (value != null) fields.add(MapEntry(key, value));
+      }
+      final names = fields.map((e) => e.key).toSet();
+      if (names.contains('t') && names.contains('k')) {
+        if (!names.contains('fid')) fields.add(MapEntry('fid', fallbackFid));
+        return _FolderParams(url, fields);
+      }
+    }
+    final lx = _jsVar(html, 'lx'), t = _jsVar(html, 't'), k = _jsVar(html, 'k');
+    if (lx == null || t == null || k == null) return null;
+    return _FolderParams(url, [
+      MapEntry('lx', lx),
+      MapEntry('fid', _jsVar(html, 'fid') ?? fallbackFid),
+      MapEntry('t', t),
+      MapEntry('k', k),
+    ]);
   }
 
   static String? _inputValue(String html, String name) {

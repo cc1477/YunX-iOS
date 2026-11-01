@@ -49,6 +49,7 @@ class _VideoResultPageState extends State<VideoResultPage> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_horiz_rounded),
@@ -64,6 +65,7 @@ class _VideoResultPageState extends State<VideoResultPage> {
         ],
       ),
       body: AppBackground(
+        safeTop: false,
         child: ListView(
           padding: const EdgeInsets.only(bottom: 120),
           children: [

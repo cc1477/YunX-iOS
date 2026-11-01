@@ -29,6 +29,7 @@ class SettingsPage extends StatelessWidget {
           ]),
         );
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('设置', style: TextStyle(fontWeight: FontWeight.w800)),
         backgroundColor: Colors.transparent,

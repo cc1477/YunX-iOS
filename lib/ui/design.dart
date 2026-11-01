@@ -7,10 +7,13 @@ import 'package:provider/provider.dart';
 import '../core/models.dart';
 import '../core/stores.dart';
 
-/// 全局背景：分组背景色 + 两团随主题色变化的柔光
+/// 全局背景：分组背景色 + 两团随主题色变化的柔光。
+/// 页面 Scaffold 用 extendBodyBehindAppBar 把背景铺到透明标题栏下面（不再出现白色色带），
+/// [safeTop] 再把内容让到状态栏 + 标题栏下方；需要内容顶到最上面的页面（视频封面）传 false。
 class AppBackground extends StatelessWidget {
-  const AppBackground({super.key, required this.child});
+  const AppBackground({super.key, required this.child, this.safeTop = true});
   final Widget child;
+  final bool safeTop;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +32,7 @@ class AppBackground extends StatelessWidget {
         top: -w * 0.25,
         child: _Glow(color: accent.secondary.withValues(alpha: dark ? 0.28 : 0.16), size: w * 0.9),
       ),
-      Positioned.fill(child: child),
+      Positioned.fill(child: safeTop ? SafeArea(left: false, right: false, bottom: false, child: child) : child),
     ]);
   }
 }

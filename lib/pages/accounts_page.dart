@@ -24,6 +24,7 @@ class AccountsPage extends StatelessWidget {
     final videos = [...VideoPlatform.values]..sort((a, b) => (a.isAvailable ? 0 : 1).compareTo(b.isAvailable ? 0 : 1));
     final theme = Theme.of(context);
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('账号', style: TextStyle(fontWeight: FontWeight.w800)),
         backgroundColor: Colors.transparent,
@@ -386,6 +387,7 @@ class _PasswordLoginPageState extends State<PasswordLoginPage> {
   Widget build(BuildContext context) {
     final k = widget.accountKey;
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(title: Text('登录${k.displayName}', style: const TextStyle(fontSize: 17))),
       body: AppBackground(
         child: ListView(padding: const EdgeInsets.all(20), children: [

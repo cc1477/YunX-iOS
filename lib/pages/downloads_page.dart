@@ -32,6 +32,7 @@ class _DownloadsPageState extends State<DownloadsPage> {
         ? (d.active.isEmpty ? 1.0 : 0.0)
         : running.map((i) => i.progress).reduce((a, b) => a + b) / running.length;
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('下载', style: TextStyle(fontWeight: FontWeight.w800)),
         backgroundColor: Colors.transparent,

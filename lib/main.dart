@@ -1,4 +1,6 @@
 // YunX Flutter —— 移植自 CYQawa/YunX（Android），GNU AGPL-3.0-or-later
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -39,6 +41,11 @@ Future<void> main() async {
 class YunXApp extends StatelessWidget {
   const YunXApp({super.key});
 
+  static SystemUiOverlayStyle _overlay(Brightness b) => (b == Brightness.dark
+          ? SystemUiOverlayStyle.light
+          : SystemUiOverlayStyle.dark)
+      .copyWith(statusBarColor: Colors.transparent, systemNavigationBarColor: Colors.transparent);
+
   ThemeData _theme(Color seed, Brightness b) {
     final base = ThemeData(
       useMaterial3: true,
@@ -49,7 +56,15 @@ class YunXApp extends StatelessWidget {
       }),
     );
     return base.copyWith(
-      appBarTheme: base.appBarTheme.copyWith(centerTitle: false),
+      // 透明标题栏，状态栏文字颜色跟随深浅色（浅色模式用黑字）
+      appBarTheme: base.appBarTheme.copyWith(
+        centerTitle: false,
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        systemOverlayStyle: _overlay(b),
+      ),
       listTileTheme: const ListTileThemeData(contentPadding: EdgeInsets.symmetric(horizontal: 16)),
     );
   }
@@ -65,7 +80,11 @@ class YunXApp extends StatelessWidget {
       darkTheme: _theme(s.accent.color, Brightness.dark),
       home: const RootPage(),
       // 提示条放在 Navigator 之上，二级页面里也能看到
-      builder: (context, child) => Stack(children: [child ?? const SizedBox.shrink(), const ToastOverlay()]),
+      // 没有标题栏的页面（解析页）也按深浅色设置状态栏文字颜色
+      builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+        value: _overlay(Theme.of(context).brightness),
+        child: Stack(children: [child ?? const SizedBox.shrink(), const ToastOverlay()]),
+      ),
     );
   }
 }
@@ -139,27 +158,16 @@ class _RootPageState extends State<RootPage> with WidgetsBindingObserver {
     final accent = context.watch<SettingsStore>().accent;
     return Stack(children: [
       Scaffold(
+        // 内容延伸到标签栏下面，透过毛玻璃可见
+        extendBody: true,
         body: IndexedStack(index: _tab, children: const [ResolvePage(), AccountsPage(), DownloadsPage(), SettingsPage()]),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _tab,
-          onDestinationSelected: (i) {
-            HapticFeedback.selectionClick();
+        bottomNavigationBar: _TabBar(
+          index: _tab,
+          badge: d.runningCount,
+          onSelect: (i) {
+            if (i != _tab) HapticFeedback.selectionClick();
             setState(() => _tab = i);
           },
-          destinations: [
-            const NavigationDestination(icon: Icon(Icons.link_rounded), label: '解析'),
-            const NavigationDestination(icon: Icon(Icons.account_circle_outlined), selectedIcon: Icon(Icons.account_circle_rounded), label: '账号'),
-            NavigationDestination(
-              icon: Badge(
-                isLabelVisible: d.runningCount > 0,
-                label: Text('${d.runningCount}'),
-                child: const Icon(Icons.download_outlined),
-              ),
-              selectedIcon: const Icon(Icons.download_rounded),
-              label: '下载',
-            ),
-            const NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings_rounded), label: '设置'),
-          ],
         ),
       ),
       if (_clipboardHint)
@@ -195,6 +203,74 @@ class _RootPageState extends State<RootPage> with WidgetsBindingObserver {
           ),
         ),
     ]);
+  }
+}
+
+/// iOS 风格标签栏：毛玻璃底 + 顶部发丝线，选中项用主题色填充图标，无 Material 胶囊指示器
+class _TabBar extends StatelessWidget {
+  const _TabBar({required this.index, required this.badge, required this.onSelect});
+  final int index, badge;
+  final ValueChanged<int> onSelect;
+
+  static const _items = [
+    (CupertinoIcons.link, CupertinoIcons.link, '解析'),
+    (CupertinoIcons.person_crop_circle, CupertinoIcons.person_crop_circle_fill, '账号'),
+    (CupertinoIcons.arrow_down_circle, CupertinoIcons.arrow_down_circle_fill, '下载'),
+    (CupertinoIcons.gear, CupertinoIcons.gear_solid, '设置'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    final accent = context.watch<SettingsStore>().accent.color;
+    final inactive = theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.75);
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: (dark ? const Color(0xFF1C1C1E) : const Color(0xFFF9F9FB)).withValues(alpha: 0.78),
+            border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5), width: 0.5)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: SizedBox(
+              height: 52,
+              child: Row(children: [
+                for (var i = 0; i < _items.length; i++)
+                  Expanded(
+                    child: Semantics(
+                      selected: i == index,
+                      button: true,
+                      label: _items[i].$3,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => onSelect(i),
+                        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          Badge(
+                            isLabelVisible: i == 2 && badge > 0,
+                            label: Text('$badge'),
+                            child: Icon(i == index ? _items[i].$2 : _items[i].$1,
+                                size: 25, color: i == index ? accent : inactive),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(_items[i].$3,
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: i == index ? FontWeight.w600 : FontWeight.w500,
+                                color: i == index ? accent : inactive,
+                              )),
+                        ]),
+                      ),
+                    ),
+                  ),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
