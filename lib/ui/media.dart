@@ -1,6 +1,7 @@
 // YunX Flutter —— 移植自 CYQawa/YunX（Android），GNU AGPL-3.0-or-later
 import 'dart:typed_data';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
@@ -70,7 +71,7 @@ class _RemoteImageState extends State<RemoteImage> {
       child: Center(
         child: _failed
             ? Icon(Icons.image_not_supported_outlined, color: Theme.of(context).colorScheme.outline)
-            : const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            : const SizedBox(width: 20, height: 20, child: CupertinoActivityIndicator()),
       ),
     );
     return AnimatedSwitcher(
@@ -131,7 +132,7 @@ class _PlayerPageState extends State<PlayerPage> {
         child: _error != null
             ? Text(_error!, style: const TextStyle(color: Colors.white70))
             : !v.isInitialized
-                ? const CircularProgressIndicator(color: Colors.white)
+                ? const CupertinoActivityIndicator(color: Colors.white)
                 : Column(mainAxisSize: MainAxisSize.min, children: [
                     AspectRatio(
                       aspectRatio: v.aspectRatio,

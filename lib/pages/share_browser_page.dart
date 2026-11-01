@@ -108,48 +108,24 @@ class _ShareBrowserPageState extends State<ShareBrowserPage> {
   }
 
   void _actions(ShareFile f) {
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          ListTile(title: Text(f.name, maxLines: 2, style: const TextStyle(fontWeight: FontWeight.w600)), subtitle: Text(Fmt.bytes(f.size))),
-          ListTile(
-            leading: const Icon(Icons.download_rounded),
-            title: const Text('下载'),
-            onTap: () {
-              Navigator.pop(ctx);
-              _download([f]);
-            },
-          ),
-          if (f.kind == FileKind.video || f.kind == FileKind.audio)
-            ListTile(
-              leading: const Icon(Icons.play_circle_outline_rounded),
-              title: const Text('在线播放'),
-              onTap: () async {
-                Navigator.pop(ctx);
-                final link = await _link(f);
-                if (link != null && mounted) {
-                  Navigator.of(context).push(CupertinoPageRoute(
-                      builder: (_) => PlayerPage(url: link.url, headers: link.headers, title: link.fileName)));
-                }
-              },
-            ),
-          ListTile(
-            leading: const Icon(Icons.link_rounded),
-            title: const Text('复制直链'),
-            onTap: () async {
-              Navigator.pop(ctx);
-              final link = await _link(f);
-              if (link != null && mounted) {
-                await Clipboard.setData(ClipboardData(text: link.url));
-                if (mounted) showToast(context, '直链已复制（需带请求头才能下载）');
-              }
-            },
-          ),
-        ]),
-      ),
-    );
+    showActionSheet(context, title: f.name, message: Fmt.bytes(f.size), actions: [
+      SheetAction('下载', () => _download([f])),
+      if (f.kind == FileKind.video || f.kind == FileKind.audio)
+        SheetAction('在线播放', () async {
+          final link = await _link(f);
+          if (link != null && mounted) {
+            Navigator.of(context).push(CupertinoPageRoute(
+                builder: (_) => PlayerPage(url: link.url, headers: link.headers, title: link.fileName)));
+          }
+        }),
+      SheetAction('复制直链', () async {
+        final link = await _link(f);
+        if (link != null && mounted) {
+          await Clipboard.setData(ClipboardData(text: link.url));
+          if (mounted) showToast(context, '直链已复制（需带请求头才能下载）');
+        }
+      }),
+    ]);
   }
 
   @override
@@ -178,7 +154,7 @@ class _ShareBrowserPageState extends State<ShareBrowserPage> {
       ),
       body: AppBackground(
         child: Stack(children: [
-          RefreshIndicator(
+          RefreshIndicator.adaptive(
             onRefresh: _load,
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
@@ -206,14 +182,7 @@ class _ShareBrowserPageState extends State<ShareBrowserPage> {
                 const SizedBox(height: 12),
                 TextField(
                   onChanged: (v) => setState(() => _query = v),
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    hintText: '搜索文件',
-                    isDense: true,
-                    filled: true,
-                    fillColor: theme.colorScheme.onSurface.withValues(alpha: 0.05),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  ),
+                  decoration: iosField(context, hint: '搜索文件', prefix: CupertinoIcons.search, dense: true),
                 ),
                 if (_crumbs.length > 1) ...[
                   const SizedBox(height: 10),
@@ -242,7 +211,7 @@ class _ShareBrowserPageState extends State<ShareBrowserPage> {
                 ],
                 const SizedBox(height: 12),
                 if (_loading)
-                  const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))
+                  const Padding(padding: EdgeInsets.all(40), child: Center(child: CupertinoActivityIndicator(radius: 13)))
                 else if (_error != null)
                   _empty(Icons.wifi_off_rounded, '加载失败', _error!, retry: true)
                 else if (visible.isEmpty)
@@ -257,14 +226,13 @@ class _ShareBrowserPageState extends State<ShareBrowserPage> {
           ),
           if (_working != null)
             Center(
-              child: Material(
-                borderRadius: BorderRadius.circular(18),
-                color: theme.colorScheme.surfaceContainerHighest,
-                elevation: 8,
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
+              child: Frosted(
+                radius: 18,
+                padding: const EdgeInsets.all(24),
+                child: Material(
+                  type: MaterialType.transparency,
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    const CircularProgressIndicator(),
+                    const CupertinoActivityIndicator(radius: 13),
                     const SizedBox(height: 12),
                     Text(_working!),
                   ]),

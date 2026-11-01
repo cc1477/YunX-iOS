@@ -19,6 +19,7 @@ dependencies:
   open_filex: ^4.5.0
   gal: ^2.3.0
   pointycastle: ^3.9.1
+  cupertino_icons: ^1.0.8
   yunx_media:
     path: packages/yunx_media
 

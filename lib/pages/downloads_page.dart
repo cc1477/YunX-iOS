@@ -1,4 +1,5 @@
 // YunX Flutter —— 移植自 CYQawa/YunX（Android），GNU AGPL-3.0-or-later
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:open_filex/open_filex.dart';
@@ -38,23 +39,13 @@ class _DownloadsPageState extends State<DownloadsPage> {
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,
         actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_horiz_rounded),
-            onSelected: (v) {
-              switch (v) {
-                case 'resume':
-                  d.resumeAll();
-                case 'pause':
-                  d.pauseAll();
-                case 'clear':
-                  _confirmClear(d);
-              }
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'resume', child: Text('全部开始')),
-              PopupMenuItem(value: 'pause', child: Text('全部暂停')),
-              PopupMenuItem(value: 'clear', child: Text('清空已完成')),
-            ],
+          IconButton(
+            icon: const Icon(CupertinoIcons.ellipsis_circle),
+            onPressed: () => showActionSheet(context, actions: [
+              SheetAction('全部开始', d.resumeAll),
+              SheetAction('全部暂停', d.pauseAll),
+              SheetAction('清空已完成', () => _confirmClear(d), destructive: true),
+            ]),
           ),
         ],
       ),
@@ -97,14 +88,16 @@ class _DownloadsPageState extends State<DownloadsPage> {
               ]),
             ),
             const SizedBox(height: 14),
-            SegmentedButton<bool>(
-              showSelectedIcon: false,
-              segments: const [
-                ButtonSegment(value: false, label: Text('进行中')),
-                ButtonSegment(value: true, label: Text('已完成')),
-              ],
-              selected: {_completedTab},
-              onSelectionChanged: (v) => setState(() => _completedTab = v.first),
+            SizedBox(
+              width: double.infinity,
+              child: CupertinoSlidingSegmentedControl<bool>(
+                groupValue: _completedTab,
+                children: const {
+                  false: Padding(padding: EdgeInsets.symmetric(vertical: 6), child: Text('进行中')),
+                  true: Padding(padding: EdgeInsets.symmetric(vertical: 6), child: Text('已完成')),
+                },
+                onValueChanged: (v) => setState(() => _completedTab = v ?? false),
+              ),
             ),
             const SizedBox(height: 14),
             if (list.isEmpty)
@@ -148,104 +141,34 @@ class _DownloadsPageState extends State<DownloadsPage> {
   }
 
   void _confirmClear(DownloadManager d) {
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          ListTile(
-            title: const Text('仅清除记录'),
-            onTap: () {
-              d.clearCompleted(removeFiles: false);
-              Navigator.pop(ctx);
-            },
-          ),
-          ListTile(
-            title: const Text('清除记录并删除文件', style: TextStyle(color: Colors.red)),
-            onTap: () {
-              d.clearCompleted(removeFiles: true);
-              Navigator.pop(ctx);
-            },
-          ),
-        ]),
-      ),
-    );
+    showActionSheet(context, title: '清空已完成的下载', actions: [
+      SheetAction('仅清除记录', () => d.clearCompleted(removeFiles: false)),
+      SheetAction('清除记录并删除文件', () => d.clearCompleted(removeFiles: true), destructive: true),
+    ]);
   }
 
   void _menu(DownloadManager d, DownloadItem item) {
     final done = item.state == DownloadState.completed;
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          ListTile(title: Text(item.fileName, maxLines: 2, style: const TextStyle(fontWeight: FontWeight.w600))),
-          if (done) ...[
-            ListTile(
-              leading: const Icon(Icons.visibility_rounded),
-              title: const Text('打开'),
-              onTap: () {
-                Navigator.pop(ctx);
-                OpenFilex.open(item.localPath);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.ios_share_rounded),
-              title: const Text('分享 / 存储到文件'),
-              onTap: () {
-                Navigator.pop(ctx);
-                Share.shareXFiles([XFile(item.localPath)]);
-              },
-            ),
-            if (item.fileKind == FileKind.image || item.fileKind == FileKind.video)
-              ListTile(
-                leading: const Icon(Icons.photo_library_rounded),
-                title: const Text('存入相册'),
-                onTap: () async {
-                  Navigator.pop(ctx);
-                  try {
-                    await DownloadManager.saveToPhotos(item.localPath, item.fileKind);
-                    if (mounted) showToast(context, '已存入相册');
-                  } catch (e) {
-                    if (mounted) showToast(context, '存入相册失败：$e', error: true);
-                  }
-                },
-              ),
-          ] else ...[
-            ListTile(
-              leading: Icon(item.state == DownloadState.running || item.state == DownloadState.queued
-                  ? Icons.pause_rounded
-                  : Icons.play_arrow_rounded),
-              title: Text(item.state == DownloadState.running || item.state == DownloadState.queued
-                  ? '暂停'
-                  : item.state == DownloadState.failed
-                      ? '重试'
-                      : '继续'),
-              onTap: () {
-                Navigator.pop(ctx);
-                d.toggle(item);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.link_rounded),
-              title: const Text('复制直链'),
-              onTap: () {
-                Clipboard.setData(ClipboardData(text: item.url));
-                Navigator.pop(ctx);
-              },
-            ),
-          ],
-          ListTile(
-            leading: const Icon(Icons.delete_outline_rounded, color: Colors.red),
-            title: const Text('删除', style: TextStyle(color: Colors.red)),
-            onTap: () {
-              Navigator.pop(ctx);
-              d.delete(item.id);
-            },
-          ),
-        ]),
-      ),
-    );
+    final active = item.state == DownloadState.running || item.state == DownloadState.queued;
+    showActionSheet(context, title: item.fileName, actions: [
+      if (done) ...[
+        SheetAction('打开', () => OpenFilex.open(item.localPath)),
+        SheetAction('分享 / 存储到文件', () => Share.shareXFiles([XFile(item.localPath)])),
+        if (item.fileKind == FileKind.image || item.fileKind == FileKind.video)
+          SheetAction('存入相册', () async {
+            try {
+              await DownloadManager.saveToPhotos(item.localPath, item.fileKind);
+              if (mounted) showToast(context, '已存入相册');
+            } catch (e) {
+              if (mounted) showToast(context, '存入相册失败：$e', error: true);
+            }
+          }),
+      ] else ...[
+        SheetAction(active ? '暂停' : (item.state == DownloadState.failed ? '重试' : '继续'), () => d.toggle(item)),
+        SheetAction('复制直链', () => Clipboard.setData(ClipboardData(text: item.url))),
+      ],
+      SheetAction('删除', () => d.delete(item.id), destructive: true),
+    ]);
   }
 }
 

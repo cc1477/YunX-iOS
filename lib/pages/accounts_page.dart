@@ -88,18 +88,9 @@ class _AccountRow extends StatelessWidget {
   }
 
   Future<void> _logout(BuildContext context) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('退出${accountKey.displayName}'),
-        content: const Text('将删除本机保存的登录信息'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('退出', style: TextStyle(color: Colors.red))),
-        ],
-      ),
-    );
-    if (ok == true && context.mounted) {
+    final ok = await showConfirm(context,
+        title: '退出${accountKey.displayName}', message: '将删除本机保存的登录信息', confirm: '退出', destructive: true);
+    if (ok && context.mounted) {
       await context.read<AccountStore>().remove(accountKey);
       if (context.mounted) showToast(context, '已退出${accountKey.displayName}');
     }
@@ -317,7 +308,7 @@ class _ManualCookiePageState extends State<ManualCookiePage> {
         title: Text('填写 ${k.displayName} Cookie', style: const TextStyle(fontSize: 17)),
         actions: [
           _checking
-              ? const Padding(padding: EdgeInsets.all(16), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
+              ? const Padding(padding: EdgeInsets.all(16), child: SizedBox(width: 20, height: 20, child: CupertinoActivityIndicator()))
               : TextButton(onPressed: _save, child: const Text('保存')),
         ],
       ),
@@ -328,7 +319,7 @@ class _ManualCookiePageState extends State<ManualCookiePage> {
           maxLines: 14,
           autocorrect: false,
           style: const TextStyle(fontFamily: 'Menlo', fontSize: 13),
-          decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'name=value; name2=value2'),
+          decoration: iosField(context, hint: 'name=value; name2=value2'),
         ),
         const SizedBox(height: 12),
         Text(
@@ -422,7 +413,7 @@ class _PasswordLoginPageState extends State<PasswordLoginPage> {
           GradientButton(
             onPressed: _working ? null : _login,
             child: _working
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                ? const SizedBox(width: 20, height: 20, child: CupertinoActivityIndicator(color: Colors.white))
                 : const Text('登录'),
           ),
         ]),

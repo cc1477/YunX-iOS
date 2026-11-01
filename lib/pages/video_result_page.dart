@@ -51,16 +51,18 @@ class _VideoResultPageState extends State<VideoResultPage> {
         foregroundColor: Colors.white,
         systemOverlayStyle: SystemUiOverlayStyle.light,
         actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_horiz_rounded),
-            onSelected: (v) {
-              Clipboard.setData(ClipboardData(text: v == 'url' ? r.url : r.text));
-              showToast(context, '已复制');
+          IconButton(
+            icon: const Icon(CupertinoIcons.ellipsis_circle),
+            onPressed: () {
+              void copy(String text) {
+                Clipboard.setData(ClipboardData(text: text));
+                showToast(context, '已复制');
+              }
+              showActionSheet(context, actions: [
+                if (r.url.isNotEmpty) SheetAction('复制原链接', () => copy(r.url)),
+                if (r.text.isNotEmpty) SheetAction('复制文案', () => copy(r.text)),
+              ]);
             },
-            itemBuilder: (_) => [
-              if (r.url.isNotEmpty) const PopupMenuItem(value: 'url', child: Text('复制原链接')),
-              if (r.text.isNotEmpty) const PopupMenuItem(value: 'text', child: Text('复制文案')),
-            ],
           ),
         ],
       ),

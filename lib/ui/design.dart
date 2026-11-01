@@ -6,6 +6,9 @@ import 'package:provider/provider.dart';
 
 import '../core/models.dart';
 import '../core/stores.dart';
+import 'ios.dart';
+
+export 'ios.dart';
 
 /// 全局背景：分组背景色 + 两团随主题色变化的柔光。
 /// 页面 Scaffold 用 extendBodyBehindAppBar 把背景铺到透明标题栏下面（不再出现白色色带），
@@ -196,9 +199,11 @@ class PlatformLogo extends StatelessWidget {
       width: size,
       height: size,
       alignment: Alignment.center,
+      // 白底 + 发丝描边，类似 iOS 设置里的应用图标
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHigh,
+        color: Theme.of(context).brightness == Brightness.dark ? IOSColors.elevatedDark2 : Colors.white,
         borderRadius: BorderRadius.circular(size * 0.28),
+        border: Border.all(color: IOSColors.separator(context), width: 0.5),
       ),
       child: img,
     );
@@ -287,13 +292,11 @@ class ToastOverlay extends StatelessWidget {
               : Padding(
                   key: ValueKey(msg),
                   padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
-                  child: Material(
-                    elevation: 8,
-                    shadowColor: Colors.black26,
-                    borderRadius: BorderRadius.circular(30),
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Frosted(
+                    radius: 30,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Material(
+                      type: MaterialType.transparency,
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
                         Icon(toast.isError ? Icons.error_rounded : Icons.check_circle_rounded,
                             color: toast.isError ? Colors.orange : Colors.green, size: 20),

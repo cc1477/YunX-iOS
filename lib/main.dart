@@ -47,9 +47,48 @@ class YunXApp extends StatelessWidget {
       .copyWith(statusBarColor: Colors.transparent, systemNavigationBarColor: Colors.transparent);
 
   ThemeData _theme(Color seed, Brightness b) {
+    final dark = b == Brightness.dark;
+    // Material 3 的 surface 系列是种子色调出来的偏紫灰；换成 iOS 系统色：
+    // 页面底 = 分组背景（#F2F2F7 / 黑），卡片、弹窗、菜单、底部面板 = 白（深色为 #1C1C1E / #2C2C2E）
+    final card = dark ? IOSColors.elevatedDark : Colors.white;
+    final card2 = dark ? IOSColors.elevatedDark2 : Colors.white;
+    final scheme = ColorScheme.fromSeed(seedColor: seed, brightness: b).copyWith(
+      primary: seed,
+      surface: card,
+      surfaceTint: Colors.transparent,
+      surfaceContainerLowest: dark ? Colors.black : IOSColors.groupedBackground,
+      surfaceContainerLow: card,
+      surfaceContainer: card,
+      surfaceContainerHigh: card2,
+      surfaceContainerHighest: card2,
+      onSurfaceVariant: dark ? IOSColors.secondaryLabelDark : IOSColors.secondaryLabelLight,
+      outline: const Color(0xFF8E8E93),
+      outlineVariant: dark ? IOSColors.separatorDark : IOSColors.separatorLight,
+    );
     final base = ThemeData(
       useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(seedColor: seed, brightness: b),
+      colorScheme: scheme,
+      scaffoldBackgroundColor: scheme.surfaceContainerLowest,
+      splashFactory: NoSplash.splashFactory,
+      dividerTheme: DividerThemeData(color: scheme.outlineVariant, thickness: 0.5, space: 0.5),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: card,
+        surfaceTintColor: Colors.transparent,
+        showDragHandle: true,
+        dragHandleColor: scheme.outline.withValues(alpha: 0.4),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(14))),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: card,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: card2,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      snackBarTheme: SnackBarThemeData(behavior: SnackBarBehavior.floating, backgroundColor: card2),
       pageTransitionsTheme: const PageTransitionsTheme(builders: {
         TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
         TargetPlatform.android: CupertinoPageTransitionsBuilder(),
@@ -148,6 +187,7 @@ class _RootPageState extends State<RootPage> with WidgetsBindingObserver {
       isScrollControlled: true,
       isDismissible: false,
       enableDrag: false,
+      showDragHandle: false,
       builder: (ctx) => const _WelcomeSheet(),
     );
   }
@@ -175,13 +215,9 @@ class _RootPageState extends State<RootPage> with WidgetsBindingObserver {
           left: 16,
           right: 16,
           bottom: MediaQuery.paddingOf(context).bottom + 90,
-          child: Material(
-            elevation: 10,
-            shadowColor: Colors.black26,
-            borderRadius: BorderRadius.circular(20),
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
+          child: Frosted(
+            child: Material(
+              type: MaterialType.transparency,
               child: Row(children: [
                 Container(
                   width: 40,
@@ -197,7 +233,10 @@ class _RootPageState extends State<RootPage> with WidgetsBindingObserver {
                   ]),
                 ),
                 Chip2(label: '解析', onTap: _pasteFromClipboard),
-                IconButton(icon: const Icon(Icons.close_rounded, size: 18), onPressed: () => setState(() => _clipboardHint = false)),
+                IconButton(
+                    icon: const Icon(CupertinoIcons.xmark_circle_fill, size: 22),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    onPressed: () => setState(() => _clipboardHint = false)),
               ]),
             ),
           ),

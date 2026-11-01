@@ -201,36 +201,15 @@ class _ResolvePageState extends State<ResolvePage> {
   }
 
   void _historyMenu(HistoryEntry e) {
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          ListTile(
-            leading: const Icon(Icons.copy_rounded),
-            title: const Text('复制链接'),
-            onTap: () {
-              Clipboard.setData(ClipboardData(text: e.text));
-              Navigator.pop(ctx);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.delete_outline_rounded, color: Colors.red),
-            title: const Text('删除', style: TextStyle(color: Colors.red)),
-            onTap: () {
-              context.read<HistoryStore>().remove(e);
-              Navigator.pop(ctx);
-            },
-          ),
-        ]),
-      ),
-    );
+    showActionSheet(context, title: e.text, actions: [
+      SheetAction('复制链接', () => Clipboard.setData(ClipboardData(text: e.text))),
+      SheetAction('删除', () => context.read<HistoryStore>().remove(e), destructive: true),
+    ]);
   }
 
   Widget _inputCard(SettingsStore settings) {
     final theme = Theme.of(context);
     final detected = _detected;
-    final fill = theme.colorScheme.onSurface.withValues(alpha: 0.05);
     return GlassCard(
       padding: const EdgeInsets.all(18),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -241,12 +220,7 @@ class _ResolvePageState extends State<ResolvePage> {
           maxLines: 6,
           textInputAction: TextInputAction.go,
           onSubmitted: (_) => _start(),
-          decoration: InputDecoration(
-            hintText: '粘贴网盘分享链接、视频链接或整段分享文案',
-            filled: true,
-            fillColor: fill,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-          ),
+          decoration: iosField(context, hint: '粘贴网盘分享链接、视频链接或整段分享文案', radius: 14),
         ),
         const SizedBox(height: 12),
         AnimatedSwitcher(
@@ -277,13 +251,7 @@ class _ResolvePageState extends State<ResolvePage> {
                   child: TextField(
                     controller: _pwd,
                     autocorrect: false,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.key_rounded),
-                      hintText: '提取码（没有可不填）',
-                      filled: true,
-                      fillColor: fill,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    ),
+                    decoration: iosField(context, hint: '提取码（没有可不填）', prefix: CupertinoIcons.lock),
                   ),
                 )
               : const SizedBox(width: double.infinity),
@@ -296,7 +264,7 @@ class _ResolvePageState extends State<ResolvePage> {
             Chip2(
               label: '清空',
               icon: Icons.close_rounded,
-              color: theme.colorScheme.onSurfaceVariant,
+              color: Colors.red,
               onTap: () {
                 _input.clear();
                 _pwd.clear();
@@ -309,7 +277,7 @@ class _ResolvePageState extends State<ResolvePage> {
           onPressed: _input.text.trim().isEmpty ? null : _start,
           child: Row(mainAxisSize: MainAxisSize.min, children: _loading
               ? const [
-                  SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                  SizedBox(width: 18, height: 18, child: CupertinoActivityIndicator(color: Colors.white)),
                   SizedBox(width: 10),
                   Text('解析中… 点按取消'),
                 ]

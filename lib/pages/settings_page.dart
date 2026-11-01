@@ -1,4 +1,5 @@
 // YunX Flutter —— 移植自 CYQawa/YunX（Android），GNU AGPL-3.0-or-later
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -99,15 +100,14 @@ class SettingsPage extends StatelessWidget {
               ),
               ListTile(
                 title: const Text('深色模式'),
-                trailing: DropdownButton<ThemeMode>(
-                  value: s.themeMode,
-                  underline: const SizedBox.shrink(),
-                  onChanged: (v) => s.setThemeMode(v ?? ThemeMode.system),
-                  items: const [
-                    DropdownMenuItem(value: ThemeMode.system, child: Text('跟随系统')),
-                    DropdownMenuItem(value: ThemeMode.light, child: Text('浅色')),
-                    DropdownMenuItem(value: ThemeMode.dark, child: Text('深色')),
-                  ],
+                trailing: CupertinoSlidingSegmentedControl<ThemeMode>(
+                  groupValue: s.themeMode,
+                  onValueChanged: (v) => s.setThemeMode(v ?? ThemeMode.system),
+                  children: const {
+                    ThemeMode.system: Text('自动', style: TextStyle(fontSize: 13)),
+                    ThemeMode.light: Text('浅色', style: TextStyle(fontSize: 13)),
+                    ThemeMode.dark: Text('深色', style: TextStyle(fontSize: 13)),
+                  },
                 ),
               ),
             ]),
@@ -126,7 +126,7 @@ class SettingsPage extends StatelessWidget {
                   ),
                 ]),
               ),
-              SwitchListTile(
+              SwitchListTile.adaptive(
                 title: const Text('完成后自动存入相册'),
                 value: s.autoSaveToPhotos,
                 onChanged: s.setAutoSaveToPhotos,
@@ -134,7 +134,7 @@ class SettingsPage extends StatelessWidget {
               const ListTile(title: Text('保存位置'), trailing: Text('文件 › 我的 iPhone › 云析')),
             ], footer: '图片和视频开启自动存入相册后，下载完成会同时保存一份到系统相册。'),
             group('解析', [
-              SwitchListTile(
+              SwitchListTile.adaptive(
                 title: const Text('识别剪贴板中的链接'),
                 value: s.clipboardDetect,
                 onChanged: s.setClipboardDetect,
