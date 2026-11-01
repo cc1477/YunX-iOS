@@ -1,0 +1,11 @@
+{
+  // Cloudflare Workers Builds 从 site-dist 分支部署；Worker 名称需与 Cloudflare 后台的项目名一致
+  "name": "yunx-ios",
+  "main": "worker.js",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/source.json", "/builds.json"]
+  }
+}

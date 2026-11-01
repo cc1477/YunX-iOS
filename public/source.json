@@ -1,0 +1,48 @@
+{
+  "name": "云析 YunX",
+  "identifier": "com.yunx.source",
+  "sourceURL": "__BASE__/source.json",
+  "sourceicon": "__BASE__/icon.png",
+  "iconURL": "__BASE__/icon.png",
+  "website": "__BASE__/",
+  "message": "云析永远免费开源，任何收费版本都是诈骗。",
+  "apps": [
+    {
+      "name": "云析 · 原生版",
+      "bundleIdentifier": "com.yunx.ios",
+      "developerName": "YunX",
+      "subtitle": "SwiftUI 原生实现，体积小、启动快、系统集成度高（推荐）",
+      "version": "1.0.0",
+      "versionDate": "2026-11-01",
+      "versionDescription": "构建 9 · 提交 f5022a2",
+      "localizedDescription": "SwiftUI 原生实现，体积小、启动快、系统集成度高（推荐）。粘贴网盘 / 视频分享链接，直接高速下载。",
+      "downloadURL": "__BASE__/ipa/37dd89053524a8bc/YunX.ipa",
+      "down": "__BASE__/ipa/37dd89053524a8bc/YunX.ipa",
+      "iconURL": "__BASE__/icon.png",
+      "icon": "__BASE__/icon.png",
+      "tintColor": "4C8BF5",
+      "size": 4300282,
+      "type": 1,
+      "lock": "0"
+    },
+    {
+      "name": "云析 · Flutter 版",
+      "bundleIdentifier": "com.yunx.yunx",
+      "developerName": "YunX",
+      "subtitle": "Flutter 跨平台实现，与原生版功能对齐，并行维护",
+      "version": "1.0.0",
+      "versionDate": "2026-11-01",
+      "versionDescription": "构建 7 · 提交 2b979aa",
+      "localizedDescription": "Flutter 跨平台实现，与原生版功能对齐，并行维护。粘贴网盘 / 视频分享链接，直接高速下载。",
+      "downloadURL": "__BASE__/ipa/fa4be89eab129273/YunX-Flutter.ipa",
+      "down": "__BASE__/ipa/fa4be89eab129273/YunX-Flutter.ipa",
+      "iconURL": "__BASE__/icon.png",
+      "icon": "__BASE__/icon.png",
+      "tintColor": "4C8BF5",
+      "size": 11396188,
+      "type": 1,
+      "lock": "0"
+    }
+  ],
+  "news": []
+}

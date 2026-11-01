@@ -1,0 +1,37 @@
+{
+  "updatedAt": "2026-11-01T03:49:18+00:00",
+  "builds": [
+    {
+      "id": "swiftui",
+      "title": "云析 · 原生版",
+      "subtitle": "SwiftUI 原生实现，体积小、启动快、系统集成度高（推荐）",
+      "name": "云析",
+      "bundle": "com.yunx.ios",
+      "version": "1.0.0",
+      "build": "9",
+      "minimumOS": "17.0",
+      "size": 4300282,
+      "sha256": "37dd89053524a8bc0c22be509c207985e429ae82694423a46b79329db569fffd",
+      "commit": "f5022a2a3de36fda2129e968107d0874df75062e",
+      "path": "ipa/37dd89053524a8bc/YunX.ipa",
+      "url": "__BASE__/ipa/37dd89053524a8bc/YunX.ipa",
+      "builtAt": "2026-11-01T03:49:18+00:00"
+    },
+    {
+      "id": "flutter",
+      "title": "云析 · Flutter 版",
+      "subtitle": "Flutter 跨平台实现，与原生版功能对齐，并行维护",
+      "name": "云析",
+      "bundle": "com.yunx.yunx",
+      "version": "1.0.0",
+      "build": "7",
+      "minimumOS": "15.0",
+      "size": 11396188,
+      "sha256": "fa4be89eab129273090139178ae577a5d1b6cd63264c9311092890e29fddbe29",
+      "commit": "2b979aa58d19f4fbf772793d6c07926a4b1a0658",
+      "path": "ipa/fa4be89eab129273/YunX-Flutter.ipa",
+      "url": "__BASE__/ipa/fa4be89eab129273/YunX-Flutter.ipa",
+      "builtAt": "2026-11-01T03:49:18+00:00"
+    }
+  ]
+}

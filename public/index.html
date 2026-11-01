@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#f4f6fb" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0d1117" media="(prefers-color-scheme: dark)">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="icon" href="icon.png">
+  <title>云析 iOS 下载</title>
+  <style>
+    :root {
+      --bg: #f4f6fb; --card: rgba(255,255,255,.78); --line: rgba(17,24,39,.08);
+      --text: #111827; --muted: #5b6474; --accent: #4c8bf5; --accent2: #7b61ff;
+      --ok: #12a150; --shadow: 0 18px 50px rgba(30,41,82,.10);
+      color-scheme: light dark;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0d1117; --card: rgba(28,34,45,.72); --line: rgba(255,255,255,.08); --text: #f2f5f9; --muted: #9aa5b5; --shadow: 0 18px 50px rgba(0,0,0,.35); }
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    [hidden] { display: none !important; }
+    body { margin: 0; min-height: 100dvh; background: var(--bg); color: var(--text); overflow-x: hidden; }
+    .glow { position: fixed; inset: -20vmax auto auto -20vmax; width: 70vmax; height: 70vmax; border-radius: 50%;
+      background: radial-gradient(circle, color-mix(in srgb, var(--accent) 38%, transparent), transparent 65%); filter: blur(30px); z-index: -1; }
+    .glow.b { inset: -10vmax -25vmax auto auto; background: radial-gradient(circle, color-mix(in srgb, var(--accent2) 30%, transparent), transparent 65%); }
+    main { width: min(100% - 32px, 560px); margin: 0 auto;
+      padding: max(28px, env(safe-area-inset-top)) 0 max(36px, env(safe-area-inset-bottom)); }
+    header { display: flex; align-items: center; gap: 16px; margin: 8px 0 26px; }
+    header img { width: 72px; height: 72px; border-radius: 18px; box-shadow: 0 10px 28px color-mix(in srgb, var(--accent) 40%, transparent); }
+    h1 { margin: 0; font-size: 32px; font-weight: 900; letter-spacing: -.5px;
+      background: linear-gradient(120deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .tagline { margin: 4px 0 0; color: var(--muted); font-size: 15px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 24px; padding: 20px;
+      box-shadow: var(--shadow); backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4); margin-bottom: 16px; }
+    .card h2 { margin: 0; font-size: 19px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
+    .tag { font-size: 12px; font-weight: 650; padding: 4px 9px; border-radius: 99px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+    .tag.gray { background: color-mix(in srgb, var(--muted) 14%, transparent); color: var(--muted); }
+    .sub { color: var(--muted); font-size: 14px; line-height: 1.6; margin: 8px 0 16px; }
+    .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 50px; border: 0; border-radius: 15px;
+      font: inherit; font-size: 16px; font-weight: 700; text-decoration: none; cursor: pointer; transition: transform .12s, filter .12s; }
+    .btn:active { transform: scale(.97); }
+    .btn.primary { color: #fff; background: linear-gradient(120deg, var(--accent), var(--accent2)); box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 35%, transparent); }
+    .btn.secondary { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+    .btn.ghost { color: var(--muted); background: transparent; min-height: 42px; font-weight: 600; font-size: 14px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .skeleton { height: 150px; border-radius: 16px; background: linear-gradient(90deg, var(--line), transparent, var(--line)); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+    .source { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
+    .source code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px;
+      padding: 12px; border-radius: 12px; background: color-mix(in srgb, var(--muted) 10%, transparent); }
+    .source .btn { width: auto; padding: 0 16px; min-height: 44px; }
+    ol { margin: 10px 0 0; padding-left: 20px; color: var(--muted); font-size: 14px; line-height: 1.75; }
+    details { font-size: 13px; color: var(--muted); }
+    summary { cursor: pointer; padding: 6px 0; font-weight: 600; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; overflow-wrap: anywhere; }
+    .qr { display: flex; gap: 16px; align-items: center; }
+    .qr #qrcode { background: #fff; padding: 8px; border-radius: 12px; flex: none; }
+    .notice { font-size: 13px; color: var(--muted); line-height: 1.7; text-align: center; margin-top: 8px; }
+    .notice a { color: var(--accent); }
+    .sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: flex-end; justify-content: center; z-index: 10; }
+    .sheet { width: min(100%, 560px); background: var(--bg); border-radius: 26px 26px 0 0; padding: 12px 20px max(24px, env(safe-area-inset-bottom));
+      animation: up .25s ease-out; }
+    @keyframes up { from { transform: translateY(100%); } }
+    .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 14px; }
+    .toast { position: fixed; left: 50%; top: max(16px, env(safe-area-inset-top)); transform: translateX(-50%); z-index: 20;
+      background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 99px; font-size: 14px; font-weight: 600; box-shadow: var(--shadow); }
+  </style>
+</head>
+<body>
+  <div class="glow"></div><div class="glow b"></div>
+  <main>
+    <header>
+      <img src="icon.png" alt="">
+      <div>
+        <h1>云析 YunX</h1>
+        <p class="tagline">粘贴网盘 / 视频分享链接，直接高速下载</p>
+      </div>
+    </header>
+
+    <section id="builds">
+      <div class="card"><div class="skeleton"></div></div>
+    </section>
+
+    <section class="card">
+      <h2>软件源</h2>
+      <p class="sub">添加软件源后，有新版本时可直接在自签工具里更新。其他支持软件源的工具（ESign、AltStore 等）可复制地址手动添加。</p>
+      <a class="btn primary" id="addSource">一键添加到全能签</a>
+      <div class="source">
+        <code id="sourceUrl"></code>
+        <button class="btn secondary" data-copy-source>复制</button>
+      </div>
+    </section>
+
+    <section class="card" id="desktop" hidden>
+      <div class="qr">
+        <div id="qrcode"></div>
+        <p class="sub" style="margin:0">请用 iPhone 的相机扫码，在 Safari 中打开本页安装。</p>
+      </div>
+    </section>
+
+    <details class="card">
+      <summary>安装说明</summary>
+      <ol>
+        <li>安装包未签名，需要用自签工具（LCSign、全能签等）配合你的证书签名后安装。</li>
+        <li><b>LCSign</b>：点「导入到 LCSign」，在 LCSign 里选择证书签名并安装。</li>
+        <li><b>全能签</b>：点「全能签安装」会唤起全能签并开始下载 IPA，下载完成后签名安装；也可以「一键添加软件源」，以后在全能签里直接更新。</li>
+        <li>没有自签工具时，也可以下载 IPA，在电脑上用 Sideloadly / AltStore 安装。</li>
+      </ol>
+    </details>
+
+    <p class="notice">
+      云析永远免费开源，任何收费版本都是诈骗。<br>
+      源代码遵循 GNU AGPL-3.0 · <a href="https://github.com/cc1477/YunX-iOS">GitHub</a>
+    </p>
+  </main>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+  <script>
+    const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const sourceURL = new URL('source.json', location.href).href;
+    document.getElementById('sourceUrl').textContent = sourceURL;
+    // 全能签官方协议（signall-api.nuosike.com/url/api.php）：addsource 添加软件源，web 打开网址（IPA 地址会直接下载）
+    document.getElementById('addSource').href = 'nsk-sign://addsource?url=' + sourceURL;
+
+    function toast(text) {
+      const el = document.getElementById('toast');
+      el.textContent = text;
+      el.hidden = false;
+      clearTimeout(toast.timer);
+      toast.timer = setTimeout(() => (el.hidden = true), 2200);
+    }
+
+    async function copy(text, label) {
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        const area = document.createElement('textarea');
+        area.value = text;
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand('copy');
+        area.remove();
+      }
+      toast(label + '已复制');
+    }
+
+    document.querySelectorAll('[data-copy-source]').forEach((b) => b.addEventListener('click', () => copy(sourceURL, '软件源地址')));
+
+    const fmtSize = (n) => (n / 1048576).toFixed(1) + ' MB';
+    const fmtDate = (s) => new Date(s).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    function card(b) {
+      const ipa = new URL(b.path, location.href).href;
+      const file = b.path.split('/').pop();
+      const lcsign = 'loadcontroller://import?url=' + encodeURIComponent(ipa) + '&name=' + encodeURIComponent(file);
+      // 按官方文档原样拼接（不转义）：地址里没有 ? 和 &，不会被截断
+      const qnq = 'nsk-sign://web?url=' + ipa;
+      const el = document.createElement('article');
+      el.className = 'card';
+      el.innerHTML = `
+        <h2>${esc(b.title)}</h2>
+        <div class="meta">
+          <span class="tag">v${esc(b.version)}（${esc(b.build)}）</span>
+          <span class="tag gray">${fmtSize(b.size)}</span>
+          ${b.minimumOS ? `<span class="tag gray">iOS ${esc(b.minimumOS)}+</span>` : ''}
+          <span class="tag gray">${fmtDate(b.builtAt)}</span>
+        </div>
+        <p class="sub">${esc(b.subtitle)}</p>
+        <a class="btn primary" href="${lcsign}">导入到 LCSign</a>
+        <div class="row">
+          <a class="btn secondary" href="${qnq}">全能签安装</a>
+          <a class="btn secondary" href="${ipa}" download="${esc(file)}">下载 IPA</a>
+        </div>
+        <details style="margin-top:12px">
+          <summary>构建与校验信息</summary>
+          <p class="mono">Bundle ID：${esc(b.bundle)}<br>提交：${esc(b.commit.slice(0, 7))}<br>SHA256：${esc(b.sha256)}</p>
+        </details>`;
+      return el;
+    }
+
+    async function load() {
+      const box = document.getElementById('builds');
+      try {
+        const res = await fetch('builds.json', { cache: 'no-store' });
+        if (!res.ok) throw new Error(res.status);
+        const data = await res.json();
+        box.replaceChildren(...data.builds.map(card));
+      } catch {
+        box.innerHTML = '<div class="card"><p class="sub" style="margin:0">版本信息暂时不可用，请稍后刷新重试。</p></div>';
+      }
+    }
+
+    load();
+    if (!isIOS) {
+      document.getElementById('desktop').hidden = false;
+      window.addEventListener('load', () => {
+        if (window.QRCode) new QRCode(document.getElementById('qrcode'), { text: location.href, width: 132, height: 132 });
+      });
+    }
+  </script>
+</body>
+</html>
