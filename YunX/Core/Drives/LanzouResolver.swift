@@ -4,7 +4,8 @@ import Foundation
 /// 蓝奏云分享解析（匿名，无需登录）：
 /// 分享页 HTML → 文件夹分页（filemoreajax）/ 单文件 → 下载参数（ajaxm/ajaxfile）→ HEAD 探测直链（含 acw_sc__v2 人机校验与「验证并下载」）。
 final class LanzouResolver: ShareResolver {
-    private struct FolderParams { let lx: String; let fid: String; let t: String; let k: String }
+    /// 文件夹分页请求：接口地址 + 页面 `data : { … }` 里的全部字段（pg / pwd 每次请求时覆盖）
+    private struct FolderParams { let url: String; let fields: [(String, String)] }
 
     private struct SharePage {
         let shareURL: String
@@ -86,10 +87,7 @@ final class LanzouResolver: ShareResolver {
         let fileId = RX.first(#"(?:ajaxm|ajaxfile)\.php\?file=(\d+)"#, in: html)
             ?? RX.first(#"name=["']file["']\s+value=["'](\d+)["']"#, in: html)
             ?? RX.first(#"file=(\d+)"#, in: html)
-        var folder: FolderParams?
-        if isFolder, let lx = Self.jsVar(html, "lx"), let t = Self.jsVar(html, "t"), let k = Self.jsVar(html, "k") {
-            folder = FolderParams(lx: lx, fid: Self.jsVar(html, "fid") ?? url.lastPathComponent, t: t, k: k)
-        }
+        let folder = isFolder ? Self.folderParams(html, origin: origin, fallbackFid: url.lastPathComponent) : nil
         var single: ShareFile?
         if !isFolder {
             var size: Int64 = 0
@@ -115,9 +113,8 @@ final class LanzouResolver: ShareResolver {
             }
             let body: JSON
             do {
-                body = try await formPost("\(page.origin)/filemoreajax.php", fields: [
-                    ("lx", params.lx), ("fid", params.fid), ("t", params.t), ("k", params.k), ("pwd", pwd), ("pg", "\(pg)"),
-                ], referer: page.shareURL, origin: page.origin)
+                body = try await formPost(params.url, fields: params.fields + [("pwd", pwd), ("pg", "\(pg)")],
+                                          referer: page.shareURL, origin: page.origin)
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
@@ -386,6 +383,35 @@ final class LanzouResolver: ShareResolver {
     private static func jsVar(_ html: String, _ name: String) -> String? {
         guard let groups = RX.groups(#"(?:(?:var|let|const)\s+)?\#(name)\s*=\s*['"]([^'"]*)['"]"#, in: html, options: []) else { return nil }
         return groups[1]
+    }
+
+    /// 新版页面把参数写在 `data : { 'lx':2, 't':变量名, 'k':变量名, … }` 里；旧版是 `var lx = '…'`
+    private static func folderParams(_ html: String, origin: String, fallbackFid: String) -> FolderParams? {
+        let url = RX.first(#"url\s*:\s*['"]([^'"]*filemoreajax\.php[^'"]*)['"]"#, in: html, options: [])
+            .map { absolutize(origin, $0) } ?? "\(origin)/filemoreajax.php"
+        if let object = RX.all(#"\bdata\s*:\s*\{([^{}]*)\}"#, in: html, options: [.dotMatchesLineSeparators])
+            .first(where: { $0[1].contains("fid") }) {
+            var fields: [(String, String)] = []
+            let props = RX.all(#"['"]?([A-Za-z_]\w*)['"]?\s*:\s*('(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|[A-Za-z_$][\w$]*|-?\d+)"#,
+                               in: object[1], options: [])
+            for prop in props where prop[1] != "pg" && prop[1] != "pwd" {
+                let raw = prop[2]
+                if raw.hasPrefix("'") || raw.hasPrefix("\"") {
+                    fields.append((prop[1], String(raw.dropFirst().dropLast())))
+                } else if raw.allSatisfy({ $0.isNumber || $0 == "-" }) {
+                    fields.append((prop[1], raw))
+                } else if let value = jsVar(html, raw) ?? RX.first(#"\b\#(NSRegularExpression.escapedPattern(for: raw))\s*=\s*(-?\d+)\s*;"#, in: html, options: []) {
+                    fields.append((prop[1], value))
+                }
+            }
+            let names = Set(fields.map(\.0))
+            if names.contains("t") && names.contains("k") {
+                if !names.contains("fid") { fields.append(("fid", fallbackFid)) }
+                return FolderParams(url: url, fields: fields)
+            }
+        }
+        guard let lx = jsVar(html, "lx"), let t = jsVar(html, "t"), let k = jsVar(html, "k") else { return nil }
+        return FolderParams(url: url, fields: [("lx", lx), ("fid", jsVar(html, "fid") ?? fallbackFid), ("t", t), ("k", k)])
     }
 
     private static func inputValue(_ html: String, _ name: String) -> String? {
